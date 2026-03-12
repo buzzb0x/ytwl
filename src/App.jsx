@@ -105,30 +105,52 @@ function Thumbnail({ video, compact }) {
   );
 }
 
-function VideoCard({ video, compact }) {
+function VideoCard({ video, compact, onRemove }) {
+  const [hovered, setHovered] = useState(false);
   return (
     <div
       style={{
         display: "flex",
         flexDirection: compact ? "row" : "column",
-        background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.07)",
+        background: hovered ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)",
+        border: `1px solid ${hovered ? "rgba(255,80,80,0.5)" : "rgba(255,255,255,0.07)"}`,
         borderRadius: 8,
         overflow: "hidden",
         transition: "border-color 0.2s, background 0.2s, transform 0.15s",
+        transform: hovered ? "translateY(-1px)" : "none",
         cursor: "default",
+        position: "relative",
       }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = "rgba(255,80,80,0.5)";
-        e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-        e.currentTarget.style.transform = "translateY(-1px)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)";
-        e.currentTarget.style.background = "rgba(255,255,255,0.03)";
-        e.currentTarget.style.transform = "none";
-      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
+      {hovered && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onRemove(video); }}
+          title="Remove video"
+          style={{
+            position: "absolute",
+            top: 6,
+            right: 6,
+            zIndex: 5,
+            background: "rgba(0,0,0,0.75)",
+            border: "1px solid rgba(255,255,255,0.15)",
+            borderRadius: 4,
+            color: "#ff5050",
+            width: 22,
+            height: 22,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            fontSize: 13,
+            lineHeight: 1,
+            padding: 0,
+          }}
+        >
+          ×
+        </button>
+      )}
       <Thumbnail video={video} compact={compact} />
       <a
         href={video.video_url}
@@ -290,6 +312,22 @@ function UploadScreen({ onUpload }) {
   );
 }
 
+function serializeCSV(rows) {
+  if (!rows.length) return "";
+  const headers = Object.keys(rows[0]);
+  const escape = (v) => {
+    const s = String(v ?? "");
+    return s.includes(",") || s.includes('"') || s.includes("\n")
+      ? `"${s.replace(/"/g, '""')}"`
+      : s;
+  };
+  const lines = [
+    headers.join(","),
+    ...rows.map((r) => headers.map((h) => escape(r[h])).join(",")),
+  ];
+  return lines.join("\n");
+}
+
 export default function App() {
   const [videos, setVideos] = useState(null);
   const [search, setSearch] = useState("");
@@ -297,6 +335,12 @@ export default function App() {
   const [groupBy, setGroupBy] = useState("none");
   const [view, setView] = useState("grid");
   const [openGroups, setOpenGroups] = useState({});
+
+  const handleRemove = useCallback(
+    (video) =>
+      setVideos((prev) => prev.filter((v) => v !== video)),
+    [],
+  );
 
   if (!videos)
     return (
@@ -368,6 +412,18 @@ export default function App() {
 
   const toggleGroup = (k) =>
     setOpenGroups((prev) => ({ ...prev, [k]: !prev[k] }));
+
+  const exportCSV = () => {
+    const ordered = Object.values(groups).flat();
+    const csv = serializeCSV(ordered);
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "watch-later.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <>
@@ -520,6 +576,23 @@ export default function App() {
                     </button>
                   ))}
                 </div>
+
+                <button
+                  onClick={exportCSV}
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 6,
+                    color: "#aaa",
+                    padding: "7px 11px",
+                    cursor: "pointer",
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: 11,
+                    flexShrink: 0,
+                  }}
+                >
+                  Export CSV
+                </button>
               </div>
             </div>
 
@@ -547,7 +620,7 @@ export default function App() {
           {groupBy === "none" ? (
             <div style={gridStyle}>
               {sorted.map((v, i) => (
-                <VideoCard key={i} video={v} compact={compact} />
+                <VideoCard key={i} video={v} compact={compact} onRemove={handleRemove} />
               ))}
             </div>
           ) : (
@@ -609,7 +682,7 @@ export default function App() {
                   {isOpen && (
                     <div style={gridStyle}>
                       {items.map((v, i) => (
-                        <VideoCard key={i} video={v} compact={compact} />
+                        <VideoCard key={i} video={v} compact={compact} onRemove={handleRemove} />
                       ))}
                     </div>
                   )}
