@@ -372,6 +372,28 @@ export default function App() {
     localStorage.setItem("ytwl_view", view);
   }, [view]);
 
+  const importRef = useRef();
+
+  const handleMerge = useCallback((file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const incoming = parseCSV(e.target.result);
+        setVideos((prev) => {
+          const existingUrls = new Set(prev.map((v) => v.video_url));
+          const newVideos = incoming.filter(
+            (v) => !existingUrls.has(v.video_url),
+          );
+          return [...prev, ...newVideos];
+        });
+      } catch {
+        alert("Failed to parse CSV.");
+      }
+    };
+    reader.readAsText(file);
+  }, []);
+
   const handleRemove = useCallback(
     (video) => setVideos((prev) => prev.filter((v) => v !== video)),
     [],
@@ -612,6 +634,32 @@ export default function App() {
                   ))}
                 </div>
 
+                <button
+                  onClick={() => importRef.current.click()}
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 6,
+                    color: "#aaa",
+                    padding: "7px 11px",
+                    cursor: "pointer",
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: 11,
+                    flexShrink: 0,
+                  }}
+                >
+                  Import CSV
+                </button>
+                <input
+                  ref={importRef}
+                  type="file"
+                  accept=".csv"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    handleMerge(e.target.files[0]);
+                    e.target.value = "";
+                  }}
+                />
                 <button
                   onClick={exportCSV}
                   style={{
