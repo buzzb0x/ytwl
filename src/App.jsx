@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap');`;
 
@@ -112,7 +112,9 @@ function VideoCard({ video, compact, onRemove }) {
       style={{
         display: "flex",
         flexDirection: compact ? "row" : "column",
-        background: hovered ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)",
+        background: hovered
+          ? "rgba(255,255,255,0.06)"
+          : "rgba(255,255,255,0.03)",
         border: `1px solid ${hovered ? "rgba(255,80,80,0.5)" : "rgba(255,255,255,0.07)"}`,
         borderRadius: 8,
         overflow: "hidden",
@@ -126,7 +128,10 @@ function VideoCard({ video, compact, onRemove }) {
     >
       {hovered && (
         <button
-          onClick={(e) => { e.stopPropagation(); onRemove(video); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove(video);
+          }}
           title="Remove video"
           style={{
             position: "absolute",
@@ -329,16 +334,46 @@ function serializeCSV(rows) {
 }
 
 export default function App() {
-  const [videos, setVideos] = useState(null);
+  const [videos, setVideos] = useState(() => {
+    try {
+      const saved = localStorage.getItem("ytwl_videos");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("date_desc");
-  const [groupBy, setGroupBy] = useState("none");
-  const [view, setView] = useState("grid");
+  const [sortBy, setSortBy] = useState(
+    () => localStorage.getItem("ytwl_sortBy") ?? "date_desc",
+  );
+  const [groupBy, setGroupBy] = useState(
+    () => localStorage.getItem("ytwl_groupBy") ?? "none",
+  );
+  const [view, setView] = useState(
+    () => localStorage.getItem("ytwl_view") ?? "grid",
+  );
   const [openGroups, setOpenGroups] = useState({});
 
+  useEffect(() => {
+    if (videos === null) {
+      localStorage.removeItem("ytwl_videos");
+    } else {
+      localStorage.setItem("ytwl_videos", JSON.stringify(videos));
+    }
+  }, [videos]);
+
+  useEffect(() => {
+    localStorage.setItem("ytwl_sortBy", sortBy);
+  }, [sortBy]);
+  useEffect(() => {
+    localStorage.setItem("ytwl_groupBy", groupBy);
+  }, [groupBy]);
+  useEffect(() => {
+    localStorage.setItem("ytwl_view", view);
+  }, [view]);
+
   const handleRemove = useCallback(
-    (video) =>
-      setVideos((prev) => prev.filter((v) => v !== video)),
+    (video) => setVideos((prev) => prev.filter((v) => v !== video)),
     [],
   );
 
@@ -620,7 +655,12 @@ export default function App() {
           {groupBy === "none" ? (
             <div style={gridStyle}>
               {sorted.map((v, i) => (
-                <VideoCard key={i} video={v} compact={compact} onRemove={handleRemove} />
+                <VideoCard
+                  key={i}
+                  video={v}
+                  compact={compact}
+                  onRemove={handleRemove}
+                />
               ))}
             </div>
           ) : (
@@ -682,7 +722,12 @@ export default function App() {
                   {isOpen && (
                     <div style={gridStyle}>
                       {items.map((v, i) => (
-                        <VideoCard key={i} video={v} compact={compact} onRemove={handleRemove} />
+                        <VideoCard
+                          key={i}
+                          video={v}
+                          compact={compact}
+                          onRemove={handleRemove}
+                        />
                       ))}
                     </div>
                   )}
