@@ -2,6 +2,17 @@ import { useState, useRef, useCallback, useEffect } from "react";
 
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap');`;
 
+function getVideoId(url) {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    if (u.hostname === "youtu.be") return u.pathname.slice(1);
+    return u.searchParams.get("v");
+  } catch {
+    return null;
+  }
+}
+
 function parseDuration(str) {
   if (!str) return 0;
   const parts = str.split(":").map(Number);
@@ -105,17 +116,27 @@ function Thumbnail({ video, compact }) {
   );
 }
 
-function VideoCard({ video, compact, onRemove }) {
+function VideoCard({
+  video,
+  compact,
+  onRemove,
+  selected,
+  onToggleSelect,
+  anySelected,
+}) {
   const [hovered, setHovered] = useState(false);
+  const showCheckbox = hovered || anySelected;
   return (
     <div
       style={{
         display: "flex",
         flexDirection: compact ? "row" : "column",
-        background: hovered
-          ? "rgba(255,255,255,0.06)"
-          : "rgba(255,255,255,0.03)",
-        border: `1px solid ${hovered ? "rgba(255,80,80,0.5)" : "rgba(255,255,255,0.07)"}`,
+        background: selected
+          ? "rgba(255,80,80,0.08)"
+          : hovered
+            ? "rgba(255,255,255,0.06)"
+            : "rgba(255,255,255,0.03)",
+        border: `1px solid ${selected ? "rgba(255,80,80,0.45)" : hovered ? "rgba(255,80,80,0.5)" : "rgba(255,255,255,0.07)"}`,
         borderRadius: 8,
         overflow: "hidden",
         transition: "border-color 0.2s, background 0.2s, transform 0.15s",
@@ -126,6 +147,34 @@ function VideoCard({ video, compact, onRemove }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
+      {showCheckbox && (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleSelect(video);
+          }}
+          title={selected ? "Deselect" : "Select for playlist"}
+          style={{
+            position: "absolute",
+            top: 6,
+            left: 6,
+            zIndex: 5,
+            width: 18,
+            height: 18,
+            borderRadius: 4,
+            background: selected ? "#ff5050" : "rgba(0,0,0,0.75)",
+            border: `1px solid ${selected ? "#ff5050" : "rgba(255,255,255,0.3)"}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            fontSize: 11,
+            color: "#fff",
+          }}
+        >
+          {selected ? "✓" : ""}
+        </div>
+      )}
       {hovered && (
         <button
           onClick={(e) => {
@@ -353,6 +402,23 @@ export default function App() {
     () => localStorage.getItem("ytwl_view") ?? "grid",
   );
   const [openGroups, setOpenGroups] = useState({});
+  const [selectedUrls, setSelectedUrls] = useState(new Set());
+
+  const handleToggleSelect = useCallback((video) => {
+    setSelectedUrls((prev) => {
+      const next = new Set(prev);
+      if (next.has(video.video_url)) next.delete(video.video_url);
+      else next.add(video.video_url);
+      return next;
+    });
+  }, []);
+
+  const playlistUrl = (() => {
+    const ids = [...selectedUrls].map(getVideoId).filter(Boolean);
+    return ids.length
+      ? `https://www.youtube.com/watch_videos?video_ids=${ids.join(",")}`
+      : null;
+  })();
 
   useEffect(() => {
     if (videos === null) {
@@ -708,6 +774,9 @@ export default function App() {
                   video={v}
                   compact={compact}
                   onRemove={handleRemove}
+                  selected={selectedUrls.has(v.video_url)}
+                  onToggleSelect={handleToggleSelect}
+                  anySelected={selectedUrls.size > 0}
                 />
               ))}
             </div>
@@ -775,6 +844,9 @@ export default function App() {
                           video={v}
                           compact={compact}
                           onRemove={handleRemove}
+                          selected={selectedUrls.has(v.video_url)}
+                          onToggleSelect={handleToggleSelect}
+                          anySelected={selectedUrls.size > 0}
                         />
                       ))}
                     </div>
@@ -785,6 +857,65 @@ export default function App() {
           )}
         </div>
       </div>
+
+      {selectedUrls.size > 0 && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 24,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 100,
+            background: "rgba(20,20,20,0.97)",
+            border: "1px solid rgba(255,80,80,0.4)",
+            borderRadius: 10,
+            padding: "10px 16px",
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            boxShadow: "0 4px 24px rgba(0,0,0,0.6)",
+            backdropFilter: "blur(8px)",
+            fontFamily: "'DM Mono', monospace",
+          }}
+        >
+          <span style={{ fontSize: 12, color: "#aaa" }}>
+            {selectedUrls.size} video{selectedUrls.size !== 1 ? "s" : ""}{" "}
+            selected
+          </span>
+          <a
+            href={playlistUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              background: "#ff5050",
+              color: "#fff",
+              borderRadius: 6,
+              padding: "6px 14px",
+              fontSize: 12,
+              fontWeight: 500,
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+            }}
+          >
+            ▶ Open as Playlist
+          </a>
+          <button
+            onClick={() => setSelectedUrls(new Set())}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#555",
+              cursor: "pointer",
+              fontSize: 16,
+              lineHeight: 1,
+              padding: 0,
+            }}
+            title="Clear selection"
+          >
+            ×
+          </button>
+        </div>
+      )}
     </>
   );
 }
