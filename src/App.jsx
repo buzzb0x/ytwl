@@ -403,8 +403,10 @@ export default function App() {
   );
   const [openGroups, setOpenGroups] = useState({});
   const [selectedUrls, setSelectedUrls] = useState(new Set());
+  const [fillMode, setFillMode] = useState(false);
 
   const handleToggleSelect = useCallback((video) => {
+    setFillMode(false);
     setSelectedUrls((prev) => {
       const next = new Set(prev);
       if (next.has(video.video_url)) next.delete(video.video_url);
@@ -465,6 +467,25 @@ export default function App() {
     [],
   );
 
+  const handleFill = useCallback(
+    (minutes) => {
+      const budget = minutes * 60;
+      const pool = [...videos].sort(() => Math.random() - 0.5);
+      let remaining = budget;
+      const picked = new Set();
+      for (const v of pool) {
+        const dur = parseDuration(v.duration);
+        if (dur > 0 && dur <= remaining) {
+          picked.add(v.video_url);
+          remaining -= dur;
+        }
+      }
+      setSelectedUrls(picked);
+      setFillMode(true);
+    },
+    [videos],
+  );
+
   if (!videos)
     return (
       <>
@@ -504,19 +525,23 @@ export default function App() {
   const totalH = Math.floor(totalSecs / 3600),
     totalM = Math.floor((totalSecs % 3600) / 60);
 
+  const displayed = fillMode && selectedUrls.size > 0
+    ? sorted.filter((v) => selectedUrls.has(v.video_url))
+    : sorted;
+
   let groups = {};
   if (groupBy === "channel") {
-    sorted.forEach((v) => {
+    displayed.forEach((v) => {
       const k = v.channel_name || "Unknown";
       (groups[k] = groups[k] || []).push(v);
     });
   } else if (groupBy === "month") {
-    sorted.forEach((v) => {
+    displayed.forEach((v) => {
       const d = v.estimated_date?.slice(0, 7) || "Unknown";
       (groups[d] = groups[d] || []).push(v);
     });
   } else {
-    groups = { all: sorted };
+    groups = { all: displayed };
   }
 
   const compact = view === "list";
@@ -700,6 +725,34 @@ export default function App() {
                   ))}
                 </div>
 
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) handleFill(Number(e.target.value));
+                    e.target.value = "";
+                  }}
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 6,
+                    padding: "7px 10px",
+                    color: "#ccc",
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: 11,
+                    cursor: "pointer",
+                    flexShrink: 0,
+                  }}
+                >
+                  <option value="" style={{ background: "#1a1a1a" }}>
+                    ⏱ Fill...
+                  </option>
+                  {[5, 10, 15, 20, 25, 30, 45, 60].map((m) => (
+                    <option key={m} value={m} style={{ background: "#1a1a1a" }}>
+                      {m} min
+                    </option>
+                  ))}
+                </select>
+
                 <button
                   onClick={() => importRef.current.click()}
                   style={{
@@ -768,7 +821,7 @@ export default function App() {
         >
           {groupBy === "none" ? (
             <div style={gridStyle}>
-              {sorted.map((v, i) => (
+              {displayed.map((v, i) => (
                 <VideoCard
                   key={i}
                   video={v}
@@ -900,7 +953,7 @@ export default function App() {
             ▶ Open as Playlist
           </a>
           <button
-            onClick={() => setSelectedUrls(new Set())}
+            onClick={() => { setSelectedUrls(new Set()); setFillMode(false); }}
             style={{
               background: "transparent",
               border: "none",
