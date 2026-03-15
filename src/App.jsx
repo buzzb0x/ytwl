@@ -525,9 +525,10 @@ export default function App() {
   const totalH = Math.floor(totalSecs / 3600),
     totalM = Math.floor((totalSecs % 3600) / 60);
 
-  const displayed = fillMode && selectedUrls.size > 0
-    ? sorted.filter((v) => selectedUrls.has(v.video_url))
-    : sorted;
+  const displayed =
+    fillMode && selectedUrls.size > 0
+      ? sorted.filter((v) => selectedUrls.has(v.video_url))
+      : sorted;
 
   let groups = {};
   if (groupBy === "channel") {
@@ -604,13 +605,11 @@ export default function App() {
               }}
             >
               <div
-                onClick={() => setVideos(null)}
                 style={{
                   fontFamily: "'Syne', sans-serif",
                   fontSize: 20,
                   fontWeight: 800,
                   letterSpacing: -0.5,
-                  cursor: "pointer",
                   flexShrink: 0,
                 }}
               >
@@ -795,6 +794,26 @@ export default function App() {
                 >
                   Export CSV
                 </button>
+                <button
+                  onClick={() => {
+                    if (confirm("Clear all videos? This cannot be undone."))
+                      setVideos(null);
+                  }}
+                  style={{
+                    background: "transparent",
+                    border: "1px solid rgba(255,80,80,0.25)",
+                    borderRadius: 6,
+                    color: "#ff5050",
+                    opacity: 0.6,
+                    padding: "7px 11px",
+                    cursor: "pointer",
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: 11,
+                    flexShrink: 0,
+                  }}
+                >
+                  Clear
+                </button>
               </div>
             </div>
 
@@ -953,7 +972,10 @@ export default function App() {
             ▶ Open as Playlist
           </a>
           <button
-            onClick={() => { setSelectedUrls(new Set()); setFillMode(false); }}
+            onClick={() => {
+              setSelectedUrls(new Set());
+              setFillMode(false);
+            }}
             style={{
               background: "transparent",
               border: "none",
