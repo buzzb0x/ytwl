@@ -123,6 +123,8 @@ function VideoCard({
   selected,
   onToggleSelect,
   anySelected,
+  fillMode,
+  onSwap,
 }) {
   const [hovered, setHovered] = useState(false);
   const showCheckbox = hovered || anySelected;
@@ -176,34 +178,67 @@ function VideoCard({
         </div>
       )}
       {hovered && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove(video);
-          }}
-          title="Remove video"
+        <div
           style={{
             position: "absolute",
             top: 6,
             right: 6,
             zIndex: 5,
-            background: "rgba(0,0,0,0.75)",
-            border: "1px solid rgba(255,255,255,0.15)",
-            borderRadius: 4,
-            color: "#ff5050",
-            width: 22,
-            height: 22,
             display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            fontSize: 13,
-            lineHeight: 1,
-            padding: 0,
+            gap: 4,
           }}
         >
-          ×
-        </button>
+          {fillMode && onSwap && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onSwap(video);
+              }}
+              title="Swap for another video"
+              style={{
+                background: "rgba(0,0,0,0.75)",
+                border: "1px solid rgba(255,255,255,0.15)",
+                borderRadius: 4,
+                color: "#aaa",
+                width: 22,
+                height: 22,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                fontSize: 13,
+                lineHeight: 1,
+                padding: 0,
+              }}
+            >
+              ⇄
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(video);
+            }}
+            title="Remove video"
+            style={{
+              background: "rgba(0,0,0,0.75)",
+              border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: 4,
+              color: "#ff5050",
+              width: 22,
+              height: 22,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              fontSize: 13,
+              lineHeight: 1,
+              padding: 0,
+            }}
+          >
+            ×
+          </button>
+        </div>
       )}
       <Thumbnail video={video} compact={compact} />
       <a
@@ -404,6 +439,7 @@ export default function App() {
   const [openGroups, setOpenGroups] = useState({});
   const [selectedUrls, setSelectedUrls] = useState(new Set());
   const [fillMode, setFillMode] = useState(false);
+  const [fillBudget, setFillBudget] = useState(0);
 
   const handleToggleSelect = useCallback((video) => {
     setSelectedUrls((prev) => {
@@ -481,9 +517,37 @@ export default function App() {
         }
       }
       setSelectedUrls(picked);
+      setFillBudget(budget);
       setFillMode(true);
     },
     [videos],
+  );
+
+  const handleSwap = useCallback(
+    (video) => {
+      setSelectedUrls((prev) => {
+        const currentTotal = [...prev].reduce(
+          (s, url) =>
+            s +
+            parseDuration(videos.find((v) => v.video_url === url)?.duration),
+          0,
+        );
+        const freed = parseDuration(video.duration);
+        const available = fillBudget - (currentTotal - freed);
+        const candidates = videos.filter(
+          (v) =>
+            !prev.has(v.video_url) && parseDuration(v.duration) <= available,
+        );
+        if (candidates.length === 0) return prev;
+        const replacement =
+          candidates[Math.floor(Math.random() * candidates.length)];
+        const next = new Set(prev);
+        next.delete(video.video_url);
+        next.add(replacement.video_url);
+        return next;
+      });
+    },
+    [videos, fillBudget],
   );
 
   if (!videos)
@@ -849,6 +913,8 @@ export default function App() {
                   selected={selectedUrls.has(v.video_url)}
                   onToggleSelect={handleToggleSelect}
                   anySelected={selectedUrls.size > 0}
+                  fillMode={fillMode}
+                  onSwap={handleSwap}
                 />
               ))}
             </div>
@@ -919,6 +985,8 @@ export default function App() {
                           selected={selectedUrls.has(v.video_url)}
                           onToggleSelect={handleToggleSelect}
                           anySelected={selectedUrls.size > 0}
+                          fillMode={fillMode}
+                          onSwap={handleSwap}
                         />
                       ))}
                     </div>
