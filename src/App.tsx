@@ -134,13 +134,22 @@ export default function App() {
         />
       </main>
 
-      {selectedUrls.size > 0 && (
-        <PlaylistBar
-          selectedCount={selectedUrls.size}
-          playlistUrl={playlistUrl}
-          onClear={clearSelection}
-        />
-      )}
+      {selectedUrls.size > 0 && (() => {
+        const selSecs = videos
+          .filter((v) => selectedUrls.has(v.video_url))
+          .reduce((s, v) => s + parseDuration(v.duration), 0);
+        const selH = Math.floor(selSecs / 3600);
+        const selM = Math.floor((selSecs % 3600) / 60);
+        const selS = selSecs % 60;
+        return (
+          <PlaylistBar
+            selectedCount={selectedUrls.size}
+            selectedDuration={selH > 0 ? `${selH}h ${selM}m` : selM > 0 ? `${selM}m ${selS}s` : `${selS}s`}
+            playlistUrl={playlistUrl}
+            onClear={clearSelection}
+          />
+        );
+      })()}
     </div>
   );
 }
