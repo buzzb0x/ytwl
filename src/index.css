@@ -1,0 +1,40 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --color-accent: #ff5050;
+  --color-bg: #0a0a0a;
+  --color-muted: #888;
+  --color-dimmed: #555;
+  --font-syne: "Syne", sans-serif;
+  --font-mono: "DM Mono", monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  background: #0a0a0a;
+  color: #fff;
+  margin: 0;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #111;
+}
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 2px;
+}
+
+input,
+select,
+button {
+  outline: none;
+}

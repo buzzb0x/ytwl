@@ -1,12 +1,11 @@
-import React from "react";
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import App from "../App";
-import { parseDuration } from "../utils";
+import App from "@/App";
+import { parseDuration } from "@/lib/duration";
+import type { Video } from "@/types";
 
 // Fixed dataset: known titles, channels, durations, dates
-const VIDEOS = [
+const VIDEOS: Video[] = [
   {
     title: "Alpha Video",
     video_url: "https://www.youtube.com/watch?v=aaa",
@@ -111,7 +110,9 @@ describe("Sort", () => {
     await userEvent.selectOptions(sortSelect, "title");
     const titleEls = screen.getAllByText(/Video$/);
     const rendered = titleEls.map((el) => el.textContent);
-    const sorted = [...rendered].sort((a, b) => a.localeCompare(b));
+    const sorted = [...rendered].sort((a, b) =>
+      (a ?? "").localeCompare(b ?? ""),
+    );
     expect(rendered).toEqual(sorted);
   });
 });
@@ -148,8 +149,7 @@ describe("Fill", () => {
 describe("Select / Unselect", () => {
   it("selecting a card shows the bottom bar", async () => {
     render(<App />);
-    // Hover the first card to reveal the checkbox
-    const card = screen.getByText("Alpha Video").closest("a").parentElement;
+    const card = screen.getByText("Alpha Video").closest("a")!.parentElement!;
     await userEvent.hover(card);
     const checkbox = screen.getByTitle("Select for playlist");
     await userEvent.click(checkbox);
@@ -158,7 +158,7 @@ describe("Select / Unselect", () => {
 
   it("deselecting the last card hides the bottom bar", async () => {
     render(<App />);
-    const card = screen.getByText("Alpha Video").closest("a").parentElement;
+    const card = screen.getByText("Alpha Video").closest("a")!.parentElement!;
     await userEvent.hover(card);
     await userEvent.click(screen.getByTitle("Select for playlist"));
     // Now deselect
@@ -168,7 +168,7 @@ describe("Select / Unselect", () => {
 
   it("clear button in bottom bar removes all selections", async () => {
     render(<App />);
-    const card = screen.getByText("Alpha Video").closest("a").parentElement;
+    const card = screen.getByText("Alpha Video").closest("a")!.parentElement!;
     await userEvent.hover(card);
     await userEvent.click(screen.getByTitle("Select for playlist"));
     // Click × clear button
@@ -233,7 +233,7 @@ describe("Swap (fill mode)", () => {
     if (beforeTitles.length === 0) return; // skip if fill picked nothing
 
     const firstTitle = beforeTitles[0];
-    const card = screen.getByText(firstTitle).closest("a").parentElement;
+    const card = screen.getByText(firstTitle).closest("a")!.parentElement!;
     await userEvent.hover(card);
     const swapBtn = screen.queryByTitle("Swap for another video");
     if (!swapBtn) return; // skip if no swap available
@@ -259,7 +259,7 @@ describe("Swap (fill mode)", () => {
     if (initialVisible.length === 0) return;
 
     const firstTitle = initialVisible[0].title;
-    const card = screen.getByText(firstTitle).closest("a").parentElement;
+    const card = screen.getByText(firstTitle).closest("a")!.parentElement!;
     await userEvent.hover(card);
     const swapBtn = screen.queryByTitle("Swap for another video");
     if (!swapBtn) return;

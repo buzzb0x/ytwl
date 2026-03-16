@@ -1,11 +1,7 @@
-import { describe, it, expect } from "vitest";
-import {
-  getVideoId,
-  parseDuration,
-  formatDuration,
-  parseCSV,
-  serializeCSV,
-} from "../utils";
+import { getVideoId } from "@/lib/youtube";
+import { parseDuration, formatDuration } from "@/lib/duration";
+import { parseCSV, serializeCSV } from "@/lib/csv";
+import type { Video } from "@/types";
 
 describe("getVideoId", () => {
   it("extracts ID from youtu.be URL", () => {
@@ -72,7 +68,7 @@ describe("formatDuration", () => {
 });
 
 describe("parseCSV / serializeCSV", () => {
-  const videos = [
+  const videos: Video[] = [
     {
       title: "Video One",
       video_url: "https://youtu.be/aaa",

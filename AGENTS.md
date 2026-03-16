@@ -7,30 +7,55 @@
 ## Stack
 
 - **React 19** with functional components and hooks
-- **Vite** for build/dev server
-- **No CSS files** — all styles are inline JSX objects
-- **No external UI or state management libraries** — vanilla React only
+- **TypeScript** (strict mode, `moduleResolution: bundler`)
+- **Vite 8** for build/dev server
+- **Tailwind CSS v4** (`@tailwindcss/vite` plugin — no `tailwind.config.js`, config lives in `src/index.css` via `@theme {}`)
+- **clsx + tailwind-merge** via `cn()` helper in `src/lib/utils.ts`
+- **class-variance-authority (cva)** for component variant logic
+- **Lucide React** for icons
+- **papaparse** for CSV parsing/serialization
 - **LocalStorage** for persistence (`ytwl_videos`, `ytwl_sortBy`, etc.)
 
 ## Project Structure
 
 ```
 src/
-  App.jsx          # Entire app — state, logic, and all components (~1000+ lines)
-  main.jsx         # React root entry point
-  utils.js         # Pure utility functions (getVideoId, parseDuration, parseCSV, etc.)
+  App.tsx                 # Root orchestrator — thin, wires hooks and components
+  main.tsx                # React entry point
+  index.css               # Tailwind entry (@import "tailwindcss") + @theme tokens + global resets
+  types/
+    index.ts              # Shared types: Video, SortBy, GroupBy, ViewMode, VideoGroups
+  lib/
+    utils.ts              # cn() = twMerge(clsx(...))
+    duration.ts           # parseDuration, formatDuration
+    youtube.ts            # getVideoId
+    csv.ts                # parseCSV, serializeCSV (papaparse)
+  hooks/
+    useLocalStorage.ts    # Generic localStorage-backed state
+    useVideos.ts          # Video list CRUD and CSV export
+    useFill.ts            # Fill/swap/select logic and playlist URL
+  components/
+    ui/
+      Button.tsx          # Ghost / danger / accent variants (cva)
+      Input.tsx           # Styled text input
+      Select.tsx          # Styled select
+    Thumbnail.tsx         # Video thumbnail with duration badge
+    VideoCard.tsx         # Single video card (cva for card/checkbox variants)
+    UploadScreen.tsx      # CSV drag-and-drop upload
+    Header.tsx            # Sticky app header with all controls
+    PlaylistBar.tsx       # Fixed bottom bar for playlist selection
+    VideoGrid.tsx         # Grouped/ungrouped video list
   test/
-    setup.js       # Vitest setup (jest-dom matchers)
-    utils.test.js  # Unit tests for utility functions
-    VideoCard.test.jsx  # Component tests for VideoCard hover/interaction
-    App.test.jsx   # Integration tests for search, sort, fill, select, group, swap
+    setup.ts              # Vitest setup (jest-dom matchers)
+    utils.test.ts         # Unit tests for lib utilities
+    VideoCard.test.tsx    # Component tests for VideoCard hover/interaction
+    App.test.tsx          # Integration tests: search, sort, fill, select, group, swap
 scripts/
   tampermonkey-export.user.js  # Browser userscript for exporting from YouTube
 index.html
-vite.config.js
+vite.config.ts
+tsconfig.json
 ```
-
-The app lives almost entirely in `src/App.jsx`. Components are defined inline in that file. Pure utility functions live in `src/utils.js`.
 
 ## Commands
 
@@ -52,61 +77,81 @@ npm run test:ui   # Open Vitest browser UI
 
 **Test files** (all under `src/test/`):
 
-- `utils.test.js` — unit tests for `getVideoId`, `parseDuration`, `formatDuration`, `parseCSV`, `serializeCSV`
-- `VideoCard.test.jsx` — hover shows/hides remove and swap buttons; checkbox behavior; callback invocation
-- `App.test.jsx` — integration tests: search/filter, sort, fill algorithm, select/unselect, group by channel (collapse/expand), fill swap
+- `utils.test.ts` — unit tests for `getVideoId`, `parseDuration`, `formatDuration`, `parseCSV`, `serializeCSV`
+- `VideoCard.test.tsx` — hover shows/hides remove and swap buttons; checkbox behavior; callback invocation
+- `App.test.tsx` — integration tests: search/filter, sort, fill algorithm, select/unselect, group by channel (collapse/expand), fill swap
 
 **Notes:**
 
-- `VideoCard` is exported from `App.jsx` for isolated component testing
+- `VideoCard` is exported from `src/components/VideoCard.tsx` for isolated testing
 - Group header divs have `data-testid="group-header-{name}"` for reliable targeting
 - App tests seed `localStorage` with a fixed 5-video dataset before each test
 - Fill and swap tests account for randomness by asserting constraints (total ≤ budget) rather than exact values
+- Vitest globals (`describe`, `it`, `expect`, `vi`) are available without imports via `"types": ["vitest/globals"]` in `tsconfig.json`
 
 ## Architecture & Conventions
 
-### Components
+### Path Alias
 
-All components are in `src/App.jsx`:
+Use `@/` for all imports from `src/`:
 
-- `App` — top-level state and layout
-- `UploadScreen` — CSV import UI shown before data is loaded
-- `VideoCard` — renders a single video in grid or list view
-- `Thumbnail` — lazy-loaded image with fallback
+```ts
+import { cn } from "@/lib/utils";
+import type { Video } from "@/types";
+```
 
 ### Styling
 
-- All styles are plain JS objects passed to the `style` prop — no CSS files, no CSS-in-JS libraries
-- Dark theme: background `#0a0a0a`, accent `#ff5050`
-- Fonts: DM Mono (monospace) and Syne (sans-serif) from Google Fonts
+- Tailwind CSS v4 — utility classes via `cn()` for all component styles
+- Custom design tokens in `src/index.css` `@theme {}` block:
+  - `--color-accent: #ff5050` → `text-accent`, `bg-accent`, `border-accent`
+  - `--color-bg: #0a0a0a` → `bg-bg`
+  - `--color-muted: #888`, `--color-dimmed: #555`
+  - `--font-syne`, `--font-mono`
+- Semi-transparent values use Tailwind's built-in opacity modifiers: `bg-white/5`, `border-accent/40`
+- Use `cn()` for conditional classes; use `cva()` when a component has discrete variant states
+
+### Component Variants
+
+Use `cva` (class-variance-authority) when a component has named variant states:
+
+```ts
+const buttonVariants = cva("base-classes", {
+  variants: { variant: { ghost: "...", danger: "...", accent: "..." } },
+  defaultVariants: { variant: "ghost" },
+});
+```
+
+Pair with `VariantProps<typeof buttonVariants>` in the props interface.
+
+### Hover-Driven Rendering
+
+`VideoCard` uses `useState(hovered)` to conditionally render action buttons. This is intentional — `group-hover:` cannot toggle DOM node existence and would leave buttons keyboard-accessible but invisible. Do not replace with CSS-only hover.
 
 ### Data Model
 
-Each video object:
-
-```js
-{
-  title: string,
-  video_url: string,
-  duration: string,        // "HH:MM:SS"
-  thumbnail_url: string,
-  channel_name: string,
-  channel_url: string,
-  relative_date: string,
-  estimated_date: string   // "YYYY-MM-DD"
+```ts
+interface Video {
+  title: string;
+  video_url: string;
+  duration: string; // "HH:MM:SS" or "MM:SS"
+  thumbnail_url: string;
+  channel_name: string;
+  estimated_date: string; // "YYYY-MM-DD"
+  relative_date: string;
 }
 ```
 
 ### Key Features
 
-- **Import/Export** — CSV-based; import merges with existing data
+- **Import/Export** — CSV-based; import merges with existing data (deduplicates by `video_url`)
 - **Search** — real-time, title + channel
-- **Sort** — date, duration, alphabetical
-- **Group** — by channel or month (collapsible)
+- **Sort** — date (newest/oldest), duration (longest/shortest), alphabetical
+- **Group** — by channel or month (collapsible sections)
 - **View** — grid or list
 - **Fill mode** — auto-select videos to fill a time budget (5–60 min)
-- **Swap mode** — replace selected videos while respecting budget
-- **Playlist export** — builds a YouTube playlist URL from selected videos
+- **Swap mode** — replace a selected video while respecting the budget
+- **Playlist export** — builds a `youtube.com/watch_videos?video_ids=...` URL from selected videos
 
 ### Tampermonkey Script
 
@@ -119,7 +164,7 @@ Each video object:
 
 ## Contribution Notes
 
-- Keep the app in `src/App.jsx` unless there's a strong reason to split it out
-- Inline styles only — do not introduce CSS files or style libraries
-- Avoid adding new dependencies; the project is intentionally minimal
-- Run `npm run test:run` to verify nothing is broken after changes
+- Run `npm run test:run` and `npm run build` to verify nothing is broken after changes
+- All new components should use Tailwind classes (no inline styles)
+- Use `cn()` for conditional class composition; use `cva()` for discrete variants
+- Keep `App.tsx` thin — business logic belongs in hooks, layout in components

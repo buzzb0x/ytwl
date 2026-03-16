@@ -1,10 +1,9 @@
-import React from "react";
-import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { VideoCard } from "../App";
+import { VideoCard, type VideoCardProps } from "@/components/VideoCard";
+import type { Video } from "@/types";
 
-const video = {
+const video: Video = {
   title: "Test Video",
   video_url: "https://www.youtube.com/watch?v=abc123",
   channel_name: "Test Channel",
@@ -14,8 +13,8 @@ const video = {
   thumbnail_url: "",
 };
 
-function renderCard(props = {}) {
-  const defaults = {
+function renderCard(props: Partial<VideoCardProps> = {}) {
+  const defaults: VideoCardProps = {
     video,
     compact: false,
     onRemove: vi.fn(),
@@ -28,25 +27,27 @@ function renderCard(props = {}) {
   return render(<VideoCard {...defaults} {...props} />);
 }
 
+// Helper: get the main card wrapper by hovering via the title's closest anchor parent
+function getCardWrapper() {
+  return screen.getByText("Test Video").closest("a")!.parentElement!;
+}
+
 describe("VideoCard — hover actions", () => {
   it("shows remove button on hover in normal mode", async () => {
     renderCard();
-    const card = screen.getByText("Test Video").closest("div[style]");
-    await userEvent.hover(card.parentElement);
+    await userEvent.hover(getCardWrapper());
     expect(screen.getByTitle("Remove video")).toBeInTheDocument();
   });
 
   it("does NOT show swap button on hover when fillMode is false", async () => {
     renderCard({ fillMode: false });
-    const card = screen.getByText("Test Video").closest("div[style]");
-    await userEvent.hover(card.parentElement);
+    await userEvent.hover(getCardWrapper());
     expect(screen.queryByTitle("Swap for another video")).toBeNull();
   });
 
   it("shows swap button on hover when fillMode is true", async () => {
     renderCard({ fillMode: true });
-    const card = screen.getByText("Test Video").closest("div[style]");
-    await userEvent.hover(card.parentElement);
+    await userEvent.hover(getCardWrapper());
     expect(screen.getByTitle("Swap for another video")).toBeInTheDocument();
   });
 
@@ -70,8 +71,10 @@ describe("VideoCard — checkbox", () => {
 
   it("shows checkmark when selected is true", () => {
     renderCard({ anySelected: true, selected: true });
-    expect(screen.getByTitle("Deselect")).toBeInTheDocument();
-    expect(screen.getByTitle("Deselect")).toHaveTextContent("✓");
+    const checkbox = screen.getByTitle("Deselect");
+    expect(checkbox).toBeInTheDocument();
+    // Selected state is shown via Check icon (SVG)
+    expect(checkbox.querySelector("svg")).toBeInTheDocument();
   });
 
   it("calls onToggleSelect when checkbox is clicked", async () => {
@@ -86,8 +89,7 @@ describe("VideoCard — button callbacks", () => {
   it("calls onRemove with the video when remove is clicked", async () => {
     const onRemove = vi.fn();
     renderCard({ onRemove });
-    const card = screen.getByText("Test Video").closest("div[style]");
-    await userEvent.hover(card.parentElement);
+    await userEvent.hover(getCardWrapper());
     await userEvent.click(screen.getByTitle("Remove video"));
     expect(onRemove).toHaveBeenCalledWith(video);
   });
@@ -95,8 +97,7 @@ describe("VideoCard — button callbacks", () => {
   it("calls onSwap with the video when swap is clicked in fill mode", async () => {
     const onSwap = vi.fn();
     renderCard({ fillMode: true, onSwap });
-    const card = screen.getByText("Test Video").closest("div[style]");
-    await userEvent.hover(card.parentElement);
+    await userEvent.hover(getCardWrapper());
     await userEvent.click(screen.getByTitle("Swap for another video"));
     expect(onSwap).toHaveBeenCalledWith(video);
   });
