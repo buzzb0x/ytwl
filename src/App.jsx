@@ -406,11 +406,11 @@ export default function App() {
   const [fillMode, setFillMode] = useState(false);
 
   const handleToggleSelect = useCallback((video) => {
-    setFillMode(false);
     setSelectedUrls((prev) => {
       const next = new Set(prev);
       if (next.has(video.video_url)) next.delete(video.video_url);
       else next.add(video.video_url);
+      if (next.size === 0) setFillMode(false);
       return next;
     });
   }, []);
