@@ -14,6 +14,7 @@ interface VideoGridProps {
   onRemove: (video: Video) => void;
   onToggleSelect: (video: Video) => void;
   onSwap: (video: Video) => void;
+  canSwap: (video: Video) => boolean;
   onToggleGroup: (key: string) => void;
 }
 
@@ -25,6 +26,7 @@ function VideoList({
   onRemove,
   onToggleSelect,
   onSwap,
+  canSwap,
   anySelected,
 }: {
   videos: Video[];
@@ -34,6 +36,7 @@ function VideoList({
   onRemove: (v: Video) => void;
   onToggleSelect: (v: Video) => void;
   onSwap: (v: Video) => void;
+  canSwap: (v: Video) => boolean;
   anySelected: boolean;
 }) {
   return (
@@ -53,7 +56,7 @@ function VideoList({
           selected={selectedUrls.has(v.video_url)}
           onToggleSelect={onToggleSelect}
           anySelected={anySelected}
-          fillMode={fillMode}
+          fillMode={fillMode && canSwap(v)}
           onSwap={onSwap}
         />
       ))}
@@ -71,6 +74,7 @@ export function VideoGrid({
   onRemove,
   onToggleSelect,
   onSwap,
+  canSwap,
   onToggleGroup,
 }: VideoGridProps) {
   const compact = view === "list";
@@ -86,6 +90,7 @@ export function VideoGrid({
         onRemove={onRemove}
         onToggleSelect={onToggleSelect}
         onSwap={onSwap}
+        canSwap={canSwap}
         anySelected={anySelected}
       />
     );
@@ -136,6 +141,7 @@ export function VideoGrid({
                 onRemove={onRemove}
                 onToggleSelect={onToggleSelect}
                 onSwap={onSwap}
+                canSwap={canSwap}
                 anySelected={anySelected}
               />
             )}

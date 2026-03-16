@@ -36,6 +36,7 @@ export default function App() {
     handleToggleSelect,
     handleFill,
     handleSwap,
+    canSwap,
     clearSelection,
   } = useFill(videos);
 
@@ -128,6 +129,7 @@ export default function App() {
           onRemove={handleRemove}
           onToggleSelect={handleToggleSelect}
           onSwap={handleSwap}
+          canSwap={canSwap}
           onToggleGroup={toggleGroup}
         />
       </main>

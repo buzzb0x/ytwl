@@ -219,49 +219,55 @@ describe("Group by channel", () => {
   });
 });
 
+// Find the first selected card that has a swap button by hovering each in turn.
+// canSwap() gates the button, so if we find one it is guaranteed to succeed.
+async function findSwapButton(titles: string[]) {
+  for (const title of titles) {
+    const card = screen.getByText(title).closest("a")!.parentElement!;
+    await userEvent.hover(card);
+    const btn = screen.queryByTitle("Swap for another video");
+    if (btn) return btn;
+    await userEvent.unhover(card);
+  }
+  return null;
+}
+
 describe("Swap (fill mode)", () => {
   it("swap replaces a selected video with a different one", async () => {
     render(<App />);
-    // Fill with 30 min so we have a reasonable selection
     await userEvent.selectOptions(screen.getByDisplayValue("⏱ Fill..."), "30");
 
-    // Grab which titles are currently visible (fill mode shows only selected)
     const beforeTitles = VIDEOS.filter((v) => screen.queryByText(v.title)).map(
       (v) => v.title,
     );
+    expect(beforeTitles.length).toBeGreaterThan(0);
 
-    if (beforeTitles.length === 0) return; // skip if fill picked nothing
-
-    const firstTitle = beforeTitles[0];
-    const card = screen.getByText(firstTitle).closest("a")!.parentElement!;
-    await userEvent.hover(card);
-    const swapBtn = screen.queryByTitle("Swap for another video");
-    if (!swapBtn) return; // skip if no swap available
+    const swapBtn = await findSwapButton(beforeTitles);
+    // If every selected video fills the budget with zero slack, no swap is geometrically
+    // possible — the fill algorithm made a tight pick. Skip rather than fail.
+    if (!swapBtn) return;
 
     await userEvent.click(swapBtn);
 
-    // After swap, the original video may no longer be shown OR a new one appears
     const afterTitles = VIDEOS.filter((v) => screen.queryByText(v.title)).map(
       (v) => v.title,
     );
-
-    // Selection set must have changed (different video)
     expect(afterTitles).not.toEqual(beforeTitles);
   });
 
   it("total duration stays within budget after swap", async () => {
+    const budget = 30;
     render(<App />);
-    await userEvent.selectOptions(screen.getByDisplayValue("⏱ Fill..."), "10");
+    await userEvent.selectOptions(
+      screen.getByDisplayValue("⏱ Fill..."),
+      String(budget),
+    );
 
     const getVisible = () => VIDEOS.filter((v) => screen.queryByText(v.title));
+    const initialTitles = getVisible().map((v) => v.title);
+    expect(initialTitles.length).toBeGreaterThan(0);
 
-    const initialVisible = getVisible();
-    if (initialVisible.length === 0) return;
-
-    const firstTitle = initialVisible[0].title;
-    const card = screen.getByText(firstTitle).closest("a")!.parentElement!;
-    await userEvent.hover(card);
-    const swapBtn = screen.queryByTitle("Swap for another video");
+    const swapBtn = await findSwapButton(initialTitles);
     if (!swapBtn) return;
     await userEvent.click(swapBtn);
 
@@ -269,6 +275,6 @@ describe("Swap (fill mode)", () => {
       (s, v) => s + parseDuration(v.duration),
       0,
     );
-    expect(totalSecs).toBeLessThanOrEqual(10 * 60);
+    expect(totalSecs).toBeLessThanOrEqual(budget * 60);
   });
 });

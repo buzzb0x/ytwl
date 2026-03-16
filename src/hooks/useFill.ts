@@ -74,6 +74,25 @@ export function useFill(videos: Video[] | null) {
     [videos, fillBudget],
   );
 
+  const canSwap = useCallback(
+    (video: Video): boolean => {
+      if (!videos) return false;
+      const currentTotal = [...selectedUrls].reduce(
+        (s, url) =>
+          s + parseDuration(videos.find((v) => v.video_url === url)?.duration),
+        0,
+      );
+      const freed = parseDuration(video.duration);
+      const available = fillBudget - (currentTotal - freed);
+      return videos.some(
+        (v) =>
+          !selectedUrls.has(v.video_url) &&
+          parseDuration(v.duration) <= available,
+      );
+    },
+    [videos, selectedUrls, fillBudget],
+  );
+
   const clearSelection = useCallback(() => {
     setSelectedUrls(new Set());
     setFillMode(false);
@@ -87,6 +106,7 @@ export function useFill(videos: Video[] | null) {
     handleToggleSelect,
     handleFill,
     handleSwap,
+    canSwap,
     clearSelection,
   };
 }
