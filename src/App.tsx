@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useVideos } from "@/hooks/useVideos";
 import { useFill } from "@/hooks/useFill";
 import { parseDuration } from "@/lib/duration";
+import type { Video } from "@/types";
 import { Header } from "@/components/Header";
 import { VideoGrid } from "@/components/VideoGrid";
 import { UploadScreen } from "@/components/UploadScreen";
 import { PlaylistBar } from "@/components/PlaylistBar";
-import type { Video, SortBy, GroupBy, ViewMode, VideoGroups } from "@/types";
+import type { SortBy, GroupBy, ViewMode, VideoGroups } from "@/types";
 
 export default function App() {
   const [videos, setVideos] = useLocalStorage<Video[] | null>(
@@ -34,11 +35,20 @@ export default function App() {
     fillMode,
     playlistUrl,
     handleToggleSelect,
+    handleDeselect,
     handleFill,
     handleSwap,
     canSwap,
     clearSelection,
   } = useFill(videos);
+
+  const handleRemoveAndDeselect = useCallback(
+    (video: Video) => {
+      handleRemove(video);
+      handleDeselect(video);
+    },
+    [handleRemove, handleDeselect],
+  );
 
   if (!videos) {
     return (
@@ -126,7 +136,7 @@ export default function App() {
           openGroups={openGroups}
           selectedUrls={selectedUrls}
           fillMode={fillMode}
-          onRemove={handleRemove}
+          onRemove={handleRemoveAndDeselect}
           onToggleSelect={handleToggleSelect}
           onSwap={handleSwap}
           canSwap={canSwap}
@@ -134,22 +144,29 @@ export default function App() {
         />
       </main>
 
-      {selectedUrls.size > 0 && (() => {
-        const selSecs = videos
-          .filter((v) => selectedUrls.has(v.video_url))
-          .reduce((s, v) => s + parseDuration(v.duration), 0);
-        const selH = Math.floor(selSecs / 3600);
-        const selM = Math.floor((selSecs % 3600) / 60);
-        const selS = selSecs % 60;
-        return (
-          <PlaylistBar
-            selectedCount={selectedUrls.size}
-            selectedDuration={selH > 0 ? `${selH}h ${selM}m` : selM > 0 ? `${selM}m ${selS}s` : `${selS}s`}
-            playlistUrl={playlistUrl}
-            onClear={clearSelection}
-          />
-        );
-      })()}
+      {selectedUrls.size > 0 &&
+        (() => {
+          const selSecs = videos
+            .filter((v) => selectedUrls.has(v.video_url))
+            .reduce((s, v) => s + parseDuration(v.duration), 0);
+          const selH = Math.floor(selSecs / 3600);
+          const selM = Math.floor((selSecs % 3600) / 60);
+          const selS = selSecs % 60;
+          return (
+            <PlaylistBar
+              selectedCount={selectedUrls.size}
+              selectedDuration={
+                selH > 0
+                  ? `${selH}h ${selM}m`
+                  : selM > 0
+                    ? `${selM}m ${selS}s`
+                    : `${selS}s`
+              }
+              playlistUrl={playlistUrl}
+              onClear={clearSelection}
+            />
+          );
+        })()}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "@/App";
 import { parseDuration } from "@/lib/duration";
@@ -123,8 +123,8 @@ describe("Fill", () => {
     const fillSelect = screen.getByDisplayValue("⏱ Fill...");
     await userEvent.selectOptions(fillSelect, "10");
 
-    // Bottom bar should appear
-    expect(screen.getByText(/video.*selected/i)).toBeInTheDocument();
+    // Bottom bar should appear (format: "N video(s) · Xm Ys")
+    expect(screen.getByText(/\d+ videos? · \d+m \d+s/)).toBeInTheDocument();
 
     // Only selected videos should be visible (fill mode filters the list)
     const visibleTitles = VIDEOS.filter((v) => screen.queryByText(v.title)).map(
@@ -142,7 +142,7 @@ describe("Fill", () => {
   it("shows the selection count in the bottom bar", async () => {
     render(<App />);
     await userEvent.selectOptions(screen.getByDisplayValue("⏱ Fill..."), "30");
-    expect(screen.getByText(/video.*selected/i)).toBeInTheDocument();
+    expect(screen.getByText(/\d+ videos? · \d+m \d+s/)).toBeInTheDocument();
   });
 });
 
@@ -153,7 +153,7 @@ describe("Select / Unselect", () => {
     await userEvent.hover(card);
     const checkbox = screen.getByTitle("Select for playlist");
     await userEvent.click(checkbox);
-    expect(screen.getByText(/1 video selected/i)).toBeInTheDocument();
+    expect(screen.getByText(/^1 video · /)).toBeInTheDocument();
   });
 
   it("deselecting the last card hides the bottom bar", async () => {
@@ -231,6 +231,39 @@ async function findSwapButton(titles: string[]) {
   }
   return null;
 }
+
+describe("Fill mode – selection sync", () => {
+  // With a 60-min budget all 5 videos fit (total = 52 min), giving a
+  // deterministic starting state of 5 selected videos.
+  // PlaylistBar format is "N video(s) · Xm Ys"; Header format is "N videos · 0h Xm total".
+  // The regex /\d+m \d+s/ uniquely targets the PlaylistBar.
+  it("deleting a selected video in fill mode removes it from the selection count", async () => {
+    render(<App />);
+    await userEvent.selectOptions(screen.getByDisplayValue("⏱ Fill..."), "60");
+    expect(screen.getByText(/^5 videos · \d+m \d+s$/)).toBeInTheDocument();
+
+    const card = screen.getByText("Alpha Video").closest("a")!.parentElement!;
+    await userEvent.hover(card);
+    await userEvent.click(screen.getByTitle("Remove video"));
+
+    expect(screen.queryByText(/^5 videos · \d+m \d+s$/)).toBeNull();
+    expect(screen.getByText(/^4 videos · \d+m \d+s$/)).toBeInTheDocument();
+  });
+
+  it("unselecting a video in fill mode removes it from the selection count", async () => {
+    render(<App />);
+    await userEvent.selectOptions(screen.getByDisplayValue("⏱ Fill..."), "60");
+    expect(screen.getByText(/^5 videos · \d+m \d+s$/)).toBeInTheDocument();
+
+    const card = screen.getByText("Alpha Video").closest("a")!.parentElement!;
+    await userEvent.hover(card);
+    // All 5 cards show "Deselect"; scope to the hovered card to avoid ambiguity
+    await userEvent.click(within(card).getByTitle("Deselect"));
+
+    expect(screen.queryByText(/^5 videos · \d+m \d+s$/)).toBeNull();
+    expect(screen.getByText(/^4 videos · \d+m \d+s$/)).toBeInTheDocument();
+  });
+});
 
 describe("Swap (fill mode)", () => {
   it("swap replaces a selected video with a different one", async () => {

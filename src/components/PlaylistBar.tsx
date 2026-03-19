@@ -16,7 +16,8 @@ export function PlaylistBar({
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-[rgba(20,20,20,0.97)] border border-accent/40 rounded-[10px] px-4 py-[10px] flex items-center gap-[14px] shadow-[0_4px_24px_rgba(0,0,0,0.6)] backdrop-blur-[8px] font-mono">
       <span className="text-[12px] text-[#aaa]">
-        {selectedCount} video{selectedCount !== 1 ? "s" : ""} · {selectedDuration}
+        {selectedCount} video{selectedCount !== 1 ? "s" : ""} ·{" "}
+        {selectedDuration}
       </span>
       {playlistUrl && (
         <a

@@ -93,6 +93,16 @@ export function useFill(videos: Video[] | null) {
     [videos, selectedUrls, fillBudget],
   );
 
+  const handleDeselect = useCallback((video: Video) => {
+    setSelectedUrls((prev) => {
+      if (!prev.has(video.video_url)) return prev;
+      const next = new Set(prev);
+      next.delete(video.video_url);
+      if (next.size === 0) setFillMode(false);
+      return next;
+    });
+  }, []);
+
   const clearSelection = useCallback(() => {
     setSelectedUrls(new Set());
     setFillMode(false);
@@ -104,6 +114,7 @@ export function useFill(videos: Video[] | null) {
     fillBudget,
     playlistUrl,
     handleToggleSelect,
+    handleDeselect,
     handleFill,
     handleSwap,
     canSwap,
