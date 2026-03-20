@@ -130,6 +130,7 @@ export function VideoCard({
             "font-syne font-semibold text-[#f0f0f0] leading-[1.35] line-clamp-2 mb-1.5",
             compact ? "text-[12px]" : "text-[13px]",
           )}
+          title={video.title}
         >
           {video.title}
         </div>
