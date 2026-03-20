@@ -1,9 +1,11 @@
-import { Play, X } from "lucide-react";
+import { Play, Shuffle, X } from "lucide-react";
 
 interface PlaylistBarProps {
   selectedCount: number;
   selectedDuration: string;
   playlistUrl: string | null;
+  fillMode?: boolean;
+  onReroll?: () => void;
   onClear: () => void;
 }
 
@@ -11,6 +13,8 @@ export function PlaylistBar({
   selectedCount,
   selectedDuration,
   playlistUrl,
+  fillMode,
+  onReroll,
   onClear,
 }: PlaylistBarProps) {
   return (
@@ -19,6 +23,16 @@ export function PlaylistBar({
         {selectedCount} video{selectedCount !== 1 ? "s" : ""} ·{" "}
         {selectedDuration}
       </span>
+      {fillMode && onReroll && (
+        <button
+          onClick={onReroll}
+          title="Reroll all videos"
+          className="bg-transparent border border-white/15 rounded-md px-[10px] py-1.5 text-[12px] text-[#aaa] cursor-pointer flex items-center gap-1.5 hover:text-white hover:border-white/30 transition-colors"
+        >
+          <Shuffle size={13} />
+          Reroll
+        </button>
+      )}
       {playlistUrl && (
         <a
           href={playlistUrl}

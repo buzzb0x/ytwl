@@ -37,6 +37,7 @@ export default function App() {
     handleToggleSelect,
     handleDeselect,
     handleFill,
+    handleRerollAll,
     handleSwap,
     canSwap,
     clearSelection,
@@ -163,6 +164,8 @@ export default function App() {
                     : `${selS}s`
               }
               playlistUrl={playlistUrl}
+              fillMode={fillMode}
+              onReroll={handleRerollAll}
               onClear={clearSelection}
             />
           );

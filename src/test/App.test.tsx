@@ -265,6 +265,84 @@ describe("Fill mode – selection sync", () => {
   });
 });
 
+describe("Reroll (fill mode)", () => {
+  it("reroll button is visible in fill mode", async () => {
+    render(<App />);
+    await userEvent.selectOptions(screen.getByDisplayValue("⏱ Fill..."), "30");
+    expect(screen.getByTitle("Reroll all videos")).toBeInTheDocument();
+  });
+
+  it("reroll button is not visible in manual selection mode", async () => {
+    render(<App />);
+    const card = screen.getByText("Alpha Video").closest("a")!.parentElement!;
+    await userEvent.hover(card);
+    await userEvent.click(screen.getByTitle("Select for playlist"));
+    expect(screen.queryByTitle("Reroll all videos")).toBeNull();
+  });
+
+  it("after reroll, total duration still fits within budget", async () => {
+    const budget = 30;
+    render(<App />);
+    await userEvent.selectOptions(
+      screen.getByDisplayValue("⏱ Fill..."),
+      String(budget),
+    );
+
+    await userEvent.click(screen.getByTitle("Reroll all videos"));
+
+    const totalSecs = VIDEOS.filter((v) => screen.queryByText(v.title)).reduce(
+      (s, v) => s + parseDuration(v.duration),
+      0,
+    );
+    expect(totalSecs).toBeLessThanOrEqual(budget * 60);
+  });
+
+  it("after reroll, the playlist bar still shows a valid count", async () => {
+    render(<App />);
+    await userEvent.selectOptions(screen.getByDisplayValue("⏱ Fill..."), "30");
+    await userEvent.click(screen.getByTitle("Reroll all videos"));
+    expect(screen.getByText(/\d+ videos? · \d+m \d+s/)).toBeInTheDocument();
+  });
+
+  it("reroll produces a different selection when Math.random is controlled", async () => {
+    // First render: force a fixed order (Alpha, Beta, Gamma, Delta, Epsilon)
+    let callCount = 0;
+    const spy = vi
+      .spyOn(Math, "random")
+      .mockImplementation(() => callCount++ / 10);
+
+    render(<App />);
+    await userEvent.selectOptions(screen.getByDisplayValue("⏱ Fill..."), "15");
+    const beforeTitles = VIDEOS.filter((v) => screen.queryByText(v.title)).map(
+      (v) => v.title,
+    );
+
+    // Reroll with reversed order
+    spy.mockImplementation(() => 1 - callCount++ / 10);
+    await userEvent.click(screen.getByTitle("Reroll all videos"));
+    const afterTitles = VIDEOS.filter((v) => screen.queryByText(v.title)).map(
+      (v) => v.title,
+    );
+
+    spy.mockRestore();
+
+    // Both selections must fit within budget
+    const budgetSecs = 15 * 60;
+    const beforeTotal = beforeTitles.reduce(
+      (s, t) => s + parseDuration(VIDEOS.find((v) => v.title === t)!.duration),
+      0,
+    );
+    const afterTotal = afterTitles.reduce(
+      (s, t) => s + parseDuration(VIDEOS.find((v) => v.title === t)!.duration),
+      0,
+    );
+    expect(beforeTotal).toBeLessThanOrEqual(budgetSecs);
+    expect(afterTotal).toBeLessThanOrEqual(budgetSecs);
+    // With different random orders the selections should differ
+    expect(afterTitles.sort()).not.toEqual(beforeTitles.sort());
+  });
+});
+
 describe("Swap (fill mode)", () => {
   it("swap replaces a selected video with a different one", async () => {
     render(<App />);

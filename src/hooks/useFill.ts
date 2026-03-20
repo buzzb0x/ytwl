@@ -25,10 +25,9 @@ export function useFill(videos: Video[] | null) {
     });
   }, []);
 
-  const handleFill = useCallback(
-    (minutes: number) => {
+  const fillFromBudget = useCallback(
+    (budget: number) => {
       if (!videos) return;
-      const budget = minutes * 60;
       const pool = [...videos].sort(() => Math.random() - 0.5);
       let remaining = budget;
       const picked = new Set<string>();
@@ -44,6 +43,16 @@ export function useFill(videos: Video[] | null) {
       setFillMode(true);
     },
     [videos],
+  );
+
+  const handleFill = useCallback(
+    (minutes: number) => fillFromBudget(minutes * 60),
+    [fillFromBudget],
+  );
+
+  const handleRerollAll = useCallback(
+    () => fillFromBudget(fillBudget),
+    [fillFromBudget, fillBudget],
   );
 
   const handleSwap = useCallback(
@@ -116,6 +125,7 @@ export function useFill(videos: Video[] | null) {
     handleToggleSelect,
     handleDeselect,
     handleFill,
+    handleRerollAll,
     handleSwap,
     canSwap,
     clearSelection,
