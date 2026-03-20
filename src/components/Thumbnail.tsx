@@ -19,7 +19,7 @@ export function Thumbnail({ video, compact }: ThumbnailProps) {
         compact ? "w-[140px] h-[82px]" : "w-full aspect-video",
       )}
     >
-      {!imgErr ? (
+      {!imgErr && video.thumbnail_url ? (
         <img
           src={video.thumbnail_url}
           alt=""
