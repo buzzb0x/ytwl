@@ -130,42 +130,78 @@
     for (var i = 0; i < text.length; i++) {
       var ch = text[i];
       if (state === 0) {
-        if (ch === '"') { state = 2; }
-        else if (ch === ",") { curRecord.push(curField); curField = ""; state = 0; }
-        else if (ch === "\r" || ch === "\n") {
+        if (ch === '"') {
+          state = 2;
+        } else if (ch === ",") {
+          curRecord.push(curField);
+          curField = "";
+          state = 0;
+        } else if (ch === "\r" || ch === "\n") {
           if (ch === "\r" && text[i + 1] === "\n") i++;
-          curRecord.push(curField); curField = "";
-          records.push(curRecord); curRecord = []; state = 0;
-        } else { curField += ch; state = 1; }
+          curRecord.push(curField);
+          curField = "";
+          records.push(curRecord);
+          curRecord = [];
+          state = 0;
+        } else {
+          curField += ch;
+          state = 1;
+        }
       } else if (state === 1) {
-        if (ch === ",") { curRecord.push(curField); curField = ""; state = 0; }
-        else if (ch === "\r" || ch === "\n") {
+        if (ch === ",") {
+          curRecord.push(curField);
+          curField = "";
+          state = 0;
+        } else if (ch === "\r" || ch === "\n") {
           if (ch === "\r" && text[i + 1] === "\n") i++;
-          curRecord.push(curField); curField = "";
-          records.push(curRecord); curRecord = []; state = 0;
-        } else { curField += ch; }
+          curRecord.push(curField);
+          curField = "";
+          records.push(curRecord);
+          curRecord = [];
+          state = 0;
+        } else {
+          curField += ch;
+        }
       } else if (state === 2) {
         if (ch === '"') {
-          if (text[i + 1] === '"') { curField += '"'; i++; }
-          else { state = 3; }
-        } else { curField += ch; }
+          if (text[i + 1] === '"') {
+            curField += '"';
+            i++;
+          } else {
+            state = 3;
+          }
+        } else {
+          curField += ch;
+        }
       } else if (state === 3) {
-        if (ch === ",") { curRecord.push(curField); curField = ""; state = 0; }
-        else if (ch === "\r" || ch === "\n") {
+        if (ch === ",") {
+          curRecord.push(curField);
+          curField = "";
+          state = 0;
+        } else if (ch === "\r" || ch === "\n") {
           if (ch === "\r" && text[i + 1] === "\n") i++;
-          curRecord.push(curField); curField = "";
-          records.push(curRecord); curRecord = []; state = 0;
+          curRecord.push(curField);
+          curField = "";
+          records.push(curRecord);
+          curRecord = [];
+          state = 0;
         }
       }
     }
     // Flush remaining
-    if (curField || curRecord.length) { curRecord.push(curField); records.push(curRecord); }
+    if (curField || curRecord.length) {
+      curRecord.push(curField);
+      records.push(curRecord);
+    }
     if (records.length < 1) return new Set();
     // Find video_url column index
     var header = records[0];
     var urlIdx = -1;
     for (var h = 0; h < header.length; h++) {
-      if (header[h].trim().toLowerCase() === "video_url") { urlIdx = h; break; }
+      if (header[h].trim().toLowerCase() === "video_url") {
+        urlIdx = h;
+        break;
+      }
     }
     if (urlIdx === -1) return null;
     // Extract video IDs
@@ -218,7 +254,9 @@
   }
   function clearHighlights() {
     var existing = document.querySelectorAll(".wl-csv-highlight");
-    existing.forEach(function (el) { el.parentNode.removeChild(el); });
+    existing.forEach(function (el) {
+      el.parentNode.removeChild(el);
+    });
   }
   function updateCsvLabel() {
     var lbl = document.getElementById("wl-csv-count");
@@ -251,28 +289,45 @@
   }
   /* ── auto-delete helpers ─────────────────────────────────────────── */
   function delay(ms) {
-    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+    return new Promise(function (resolve) {
+      setTimeout(resolve, ms);
+    });
   }
   function waitFor(predicate, timeout) {
     return new Promise(function (resolve) {
       var start = Date.now();
       (function check() {
-        if (predicate()) { resolve(true); return; }
-        if (Date.now() - start > timeout) { resolve(false); return; }
+        if (predicate()) {
+          resolve(true);
+          return;
+        }
+        if (Date.now() - start > timeout) {
+          resolve(false);
+          return;
+        }
         setTimeout(check, 50);
       })();
     });
   }
   async function runAutoDelete() {
-    var ribbons = document.querySelectorAll("ytd-playlist-video-renderer .wl-csv-highlight");
+    var ribbons = document.querySelectorAll(
+      "ytd-playlist-video-renderer .wl-csv-highlight",
+    );
     var items = [];
-    ribbons.forEach(function (r) { items.push(r.parentNode); });
+    ribbons.forEach(function (r) {
+      items.push(r.parentNode);
+    });
     if (items.length === 0) {
-      alert("[WL Export] No highlighted videos visible. Scroll through the playlist to load them all, then try again.");
+      alert(
+        "[WL Export] No highlighted videos visible. Scroll through the playlist to load them all, then try again.",
+      );
       return;
     }
     var btn = document.getElementById("wl-auto-delete-btn");
-    if (btn) { btn.disabled = true; btn.textContent = "Deleting 0/" + items.length; }
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Deleting 0/" + items.length;
+    }
     var deleted = 0;
     for (var i = 0; i < items.length; i++) {
       var el = items[i];
@@ -281,24 +336,45 @@
       if (!actionBtn) continue;
       actionBtn.click();
       var appeared = await waitFor(function () {
-        return !!document.querySelector("ytd-menu-popup-renderer ytd-menu-service-item-renderer");
+        return !!document.querySelector(
+          "ytd-menu-popup-renderer ytd-menu-service-item-renderer",
+        );
       }, 2000);
       if (!appeared) {
-        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", keyCode: 27, bubbles: true }));
+        document.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key: "Escape",
+            keyCode: 27,
+            bubbles: true,
+          }),
+        );
         await delay(200);
         continue;
       }
-      var menuItems = document.querySelectorAll("ytd-menu-popup-renderer ytd-menu-service-item-renderer");
+      var menuItems = document.querySelectorAll(
+        "ytd-menu-popup-renderer ytd-menu-service-item-renderer",
+      );
       var removeItem = null;
       menuItems.forEach(function (item) {
-        if ((item.textContent || "").toLowerCase().indexOf("remove from watch") !== -1) removeItem = item;
+        if (
+          (item.textContent || "")
+            .toLowerCase()
+            .indexOf("remove from watch") !== -1
+        )
+          removeItem = item;
       });
       if (removeItem) {
         removeItem.click();
         deleted++;
         await delay(600);
       } else {
-        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", keyCode: 27, bubbles: true }));
+        document.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key: "Escape",
+            keyCode: 27,
+            bubbles: true,
+          }),
+        );
         await delay(200);
       }
     }
@@ -308,7 +384,13 @@
       btn.style.background = "#c05000";
     }
     updateCsvLabel();
-    console.log("[WL Export] Auto-delete done: " + deleted + "/" + items.length + " removed.");
+    console.log(
+      "[WL Export] Auto-delete done: " +
+        deleted +
+        "/" +
+        items.length +
+        " removed.",
+    );
   }
   /* ── checkbox injection ──────────────────────────────────────────── */
   function injectCheckboxes() {
@@ -501,17 +583,27 @@
         var text = e.target.result;
         var ids = parseCsvToIdSet(text);
         if (ids === null) {
-          alert('[WL Export] Could not find a "video_url" column.\nMake sure you are loading a CSV exported by this script or the webapp.');
+          alert(
+            '[WL Export] Could not find a "video_url" column.\nMake sure you are loading a CSV exported by this script or the webapp.',
+          );
           fileInput.value = "";
           return;
         }
         if (ids.size === 0) {
-          alert("[WL Export] The loaded CSV contained no recognizable YouTube video URLs.");
+          alert(
+            "[WL Export] The loaded CSV contained no recognizable YouTube video URLs.",
+          );
           fileInput.value = "";
           return;
         }
         csvVideoIds = ids;
-        console.log("[WL Export] CSV loaded: " + ids.size + ' video IDs from "' + csvFilename + '"');
+        console.log(
+          "[WL Export] CSV loaded: " +
+            ids.size +
+            ' video IDs from "' +
+            csvFilename +
+            '"',
+        );
         clearHighlights();
         applyHighlights();
         updateCsvLabel();
@@ -524,11 +616,17 @@
     });
     var csvCountLbl = document.createElement("span");
     csvCountLbl.id = "wl-csv-count";
-    csvCountLbl.style.cssText = "color:#ff9999;font-size:12px;text-align:center;display:none;";
+    csvCountLbl.style.cssText =
+      "color:#ff9999;font-size:12px;text-align:center;display:none;";
     var btnClearCsv = makeButton("Clear CSV", "#555", "#444", runClearCsv);
     btnClearCsv.id = "wl-csv-clear-btn";
     btnClearCsv.style.display = "none";
-    var btnAutoDelete = makeButton("Delete Highlighted", "#c05000", "#a04000", runAutoDelete);
+    var btnAutoDelete = makeButton(
+      "Delete Highlighted",
+      "#c05000",
+      "#a04000",
+      runAutoDelete,
+    );
     btnAutoDelete.id = "wl-auto-delete-btn";
     btnAutoDelete.style.display = "none";
     panel.appendChild(sep);
