@@ -13,7 +13,8 @@ export type SortBy =
   | "date_asc"
   | "duration_desc"
   | "duration_asc"
-  | "title";
+  | "title"
+  | "selection";
 
 export type GroupBy = "none" | "channel" | "month";
 

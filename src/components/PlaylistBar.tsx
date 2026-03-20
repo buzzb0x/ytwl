@@ -36,6 +36,7 @@ export function PlaylistBar({
       {/* Clear — row 1 right of caption on narrow, last on wide */}
       <button
         onClick={onClear}
+        title="Clear selection"
         className="xs:order-last bg-transparent border-none text-dimmed cursor-pointer p-0
           flex items-center hover:text-white transition-colors"
       >

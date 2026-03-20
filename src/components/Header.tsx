@@ -108,6 +108,9 @@ export function Header({
             <option value="title" style={{ background: "#1a1a1a" }}>
               A–Z
             </option>
+            <option value="selection" style={{ background: "#1a1a1a" }}>
+              Selection
+            </option>
           </Select>
 
           <div className="flex border border-white/10 rounded-md overflow-hidden shrink-0">

@@ -3,6 +3,7 @@ import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useVideos } from "@/hooks/useVideos";
 import { useFill } from "@/hooks/useFill";
 import { parseDuration } from "@/lib/duration";
+import { getVideoId } from "@/lib/youtube";
 import type { Video } from "@/types";
 import { Header } from "@/components/Header";
 import { VideoGrid } from "@/components/VideoGrid";
@@ -30,10 +31,11 @@ export default function App() {
   const { handleUpload, handleMerge, handleRemove, exportCSV, clearVideos } =
     useVideos(videos, setVideos);
 
+  const [prevSortBy, setPrevSortBy] = useState<SortBy | null>(null);
+
   const {
     selectedUrls,
     fillMode,
-    playlistUrl,
     handleToggleSelect,
     handleDeselect,
     handleFill,
@@ -42,6 +44,23 @@ export default function App() {
     canSwap,
     clearSelection,
   } = useFill(videos);
+
+  const handleFillAndAutoSort = useCallback(
+    (minutes: number) => {
+      setPrevSortBy(sortBy);
+      setSortBy("selection");
+      handleFill(minutes);
+    },
+    [sortBy, handleFill, setSortBy],
+  );
+
+  const clearSelectionAndRestoreSort = useCallback(() => {
+    clearSelection();
+    if (prevSortBy !== null) {
+      setSortBy(prevSortBy);
+      setPrevSortBy(null);
+    }
+  }, [clearSelection, prevSortBy, setSortBy]);
 
   const handleRemoveAndDeselect = useCallback(
     (video: Video) => {
@@ -69,7 +88,17 @@ export default function App() {
       v.channel_name?.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const selectionOrder =
+    sortBy === "selection"
+      ? new Map([...selectedUrls].map((url, i) => [url, i]))
+      : null;
+
   const sorted = [...filtered].sort((a, b) => {
+    if (selectionOrder) {
+      const ai = selectionOrder.get(a.video_url) ?? selectedUrls.size;
+      const bi = selectionOrder.get(b.video_url) ?? selectedUrls.size;
+      return ai - bi;
+    }
     if (sortBy === "duration_asc")
       return parseDuration(a.duration) - parseDuration(b.duration);
     if (sortBy === "duration_desc")
@@ -90,6 +119,17 @@ export default function App() {
     fillMode && selectedUrls.size > 0
       ? sorted.filter((v) => selectedUrls.has(v.video_url))
       : sorted;
+
+  const playlistUrl = (() => {
+    if (!selectedUrls.size) return null;
+    const ids = displayed
+      .filter((v) => selectedUrls.has(v.video_url))
+      .map((v) => getVideoId(v.video_url))
+      .filter(Boolean);
+    return ids.length
+      ? `https://www.youtube.com/watch_videos?video_ids=${ids.join(",")}`
+      : null;
+  })();
 
   const groups: VideoGroups = {};
   if (groupBy === "channel") {
@@ -120,7 +160,7 @@ export default function App() {
         onGroupChange={setGroupBy}
         view={view}
         onViewChange={setView}
-        onFill={handleFill}
+        onFill={handleFillAndAutoSort}
         onImport={handleMerge}
         onExport={() => exportCSV(groups)}
         onClear={clearVideos}
@@ -166,7 +206,7 @@ export default function App() {
               playlistUrl={playlistUrl}
               fillMode={fillMode}
               onReroll={handleRerollAll}
-              onClear={clearSelection}
+              onClear={clearSelectionAndRestoreSort}
             />
           );
         })()}

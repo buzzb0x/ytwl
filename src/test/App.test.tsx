@@ -343,6 +343,124 @@ describe("Reroll (fill mode)", () => {
   });
 });
 
+describe("Selection sort", () => {
+  it("surfaces selected videos to the top in manual selection mode", async () => {
+    render(<App />);
+    // Default date_desc: Epsilon(May), Delta(Apr), Gamma(Mar), Beta(Feb), Alpha(Jan)
+    // Select Gamma (currently position 2)
+    const gammaCard = screen
+      .getByText("Gamma Video")
+      .closest("a")!.parentElement!;
+    await userEvent.hover(gammaCard);
+    await userEvent.click(screen.getByTitle("Select for playlist"));
+
+    await userEvent.selectOptions(
+      screen.getByDisplayValue("Newest"),
+      "selection",
+    );
+
+    const titles = screen.getAllByText(/Video$/).map((el) => el.textContent!);
+    expect(titles[0]).toBe("Gamma Video");
+  });
+
+  it("orders multiple selected videos by selection click order", async () => {
+    render(<App />);
+    // Select Epsilon first, then Alpha (reverse of both title and date order)
+    const epsilonCard = screen
+      .getByText("Epsilon Video")
+      .closest("a")!.parentElement!;
+    await userEvent.hover(epsilonCard);
+    await userEvent.click(screen.getByTitle("Select for playlist"));
+
+    const alphaCard = screen
+      .getByText("Alpha Video")
+      .closest("a")!.parentElement!;
+    await userEvent.click(within(alphaCard).getByTitle("Select for playlist"));
+
+    await userEvent.selectOptions(
+      screen.getByDisplayValue("Newest"),
+      "selection",
+    );
+
+    const titles = screen.getAllByText(/Video$/).map((el) => el.textContent!);
+    expect(titles[0]).toBe("Epsilon Video");
+    expect(titles[1]).toBe("Alpha Video");
+  });
+
+  it("fill mode auto-activates selection sort", async () => {
+    render(<App />);
+    await userEvent.selectOptions(screen.getByDisplayValue("Newest"), "title");
+    await userEvent.selectOptions(screen.getByDisplayValue("⏱ Fill..."), "30");
+    expect(screen.getByDisplayValue("Selection")).toBeInTheDocument();
+  });
+
+  it("clearing fill restores the sort that was active before filling", async () => {
+    render(<App />);
+    await userEvent.selectOptions(screen.getByDisplayValue("Newest"), "title");
+    await userEvent.selectOptions(screen.getByDisplayValue("⏱ Fill..."), "30");
+    await userEvent.click(screen.getByTitle("Clear selection"));
+    expect(screen.getByDisplayValue("A–Z")).toBeInTheDocument();
+  });
+
+  it("switching sort while in fill mode updates the playlist URL order", async () => {
+    render(<App />);
+    // mockReturnValue(0.1) reverses the fill pool → Set insertion: eee,ddd,ccc,bbb,aaa
+    vi.spyOn(Math, "random").mockReturnValue(0.1);
+    await userEvent.selectOptions(screen.getByDisplayValue("⏱ Fill..."), "60");
+    vi.restoreAllMocks();
+
+    // Switch from auto-activated "selection" sort to "title" while still in fill mode
+    await userEvent.selectOptions(
+      screen.getByDisplayValue("Selection"),
+      "title",
+    );
+
+    const link = screen.getByRole("link", { name: /playlist/i });
+    const urlIds = new URL(link.getAttribute("href")!).searchParams
+      .get("video_ids")!
+      .split(",");
+
+    // Title sort: Alpha(aaa), Beta(bbb), Delta(ddd), Epsilon(eee), Gamma(ccc)
+    expect(urlIds).toEqual(["aaa", "bbb", "ddd", "eee", "ccc"]);
+  });
+});
+
+describe("Fill mode – playlist URL ordering", () => {
+  // mockReturnValue(0.1): comparator = 0.1 - 0.5 = -0.4.
+  // V8's binary insertion sort: compare(pivot, mid) < 0 → right = mid, so right
+  // always shrinks to 0 and every element is inserted at position 0 — reversing
+  // the array reliably.
+  // Fill order (Set insertion): eee, ddd, ccc, bbb, aaa (reversed VIDEOS)
+  // Selection sort (display order): same fill order → eee, ddd, ccc, bbb, aaa
+  // The invariant: URL IDs must equal the displayed card order.
+  it("playlist URL video IDs match the current display order", async () => {
+    render(<App />);
+
+    vi.spyOn(Math, "random").mockReturnValue(0.1);
+    // 60-min budget fits all 5 (total = 52 min); fill auto-switches to selection sort
+    await userEvent.selectOptions(screen.getByDisplayValue("⏱ Fill..."), "60");
+    vi.restoreAllMocks();
+
+    // Collect titles in DOM order (= selection/fill order after auto-sort switch)
+    const displayedTitles = screen
+      .getAllByText(/Video$/)
+      .map((el) => el.textContent!);
+    const displayedIds = displayedTitles.map(
+      (t) =>
+        new URL(VIDEOS.find((v) => v.title === t)!.video_url).searchParams.get(
+          "v",
+        )!,
+    );
+
+    const link = screen.getByRole("link", { name: /playlist/i });
+    const urlIds = new URL(link.getAttribute("href")!).searchParams
+      .get("video_ids")!
+      .split(",");
+
+    expect(urlIds).toEqual(displayedIds);
+  });
+});
+
 describe("Swap (fill mode)", () => {
   it("swap replaces a selected video with a different one", async () => {
     render(<App />);
@@ -387,5 +505,35 @@ describe("Swap (fill mode)", () => {
       0,
     );
     expect(totalSecs).toBeLessThanOrEqual(budget * 60);
+  });
+
+  it("swap places the replacement at the same URL position as the swapped-out video", async () => {
+    render(<App />);
+    // mockReturnValue(0.1): constant -0.4 comparator reverses pool via insertion sort
+    // Reversed VIDEOS: [Epsilon(20m), Delta(2m), Gamma(15m), Beta(10m), Alpha(5m)]
+    // 30-min budget picks: Epsilon(20m), Delta(2m), Alpha(5m) = 27m total
+    // Set insertion order: eee(pos 0), ddd(pos 1), aaa(pos 2)
+    // canSwap(Epsilon): frees 20m → 13m slack → Beta(10m) and Gamma(15m) both fit
+    // canSwap(Delta/Alpha): ≤5m slack → no candidate fits → no swap button for them
+    vi.spyOn(Math, "random").mockReturnValue(0.1);
+    await userEvent.selectOptions(screen.getByDisplayValue("⏱ Fill..."), "30");
+
+    // Hover Epsilon – the only card with a swap button
+    const epsilonCard = screen
+      .getByText("Epsilon Video")
+      .closest("a")!.parentElement!;
+    await userEvent.hover(epsilonCard);
+    // Math.random still mocked: candidates[floor(0.1*2)]=candidates[0]=Beta(bbb)
+    await userEvent.click(screen.getByTitle("Swap for another video"));
+    vi.restoreAllMocks();
+
+    // Expected URL: bbb at position 0 (where eee was), ddd at 1, aaa at 2
+    // BUG: actual is ["ddd","aaa","bbb"] – replacement appended at end of Set
+    const playlistLink = screen.getByRole("link", { name: /playlist/i });
+    const afterIds = new URL(playlistLink.getAttribute("href")!).searchParams
+      .get("video_ids")!
+      .split(",");
+
+    expect(afterIds).toEqual(["bbb", "ddd", "aaa"]);
   });
 });

@@ -1,19 +1,11 @@
 import { useState, useCallback } from "react";
 import { parseDuration } from "@/lib/duration";
-import { getVideoId } from "@/lib/youtube";
 import type { Video } from "@/types";
 
 export function useFill(videos: Video[] | null) {
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
   const [fillMode, setFillMode] = useState(false);
   const [fillBudget, setFillBudget] = useState(0);
-
-  const playlistUrl = (() => {
-    const ids = [...selectedUrls].map(getVideoId).filter(Boolean);
-    return ids.length
-      ? `https://www.youtube.com/watch_videos?video_ids=${ids.join(",")}`
-      : null;
-  })();
 
   const handleToggleSelect = useCallback((video: Video) => {
     setSelectedUrls((prev) => {
@@ -74,9 +66,11 @@ export function useFill(videos: Video[] | null) {
         if (candidates.length === 0) return prev;
         const replacement =
           candidates[Math.floor(Math.random() * candidates.length)];
-        const next = new Set(prev);
-        next.delete(video.video_url);
-        next.add(replacement.video_url);
+        const next = new Set(
+          [...prev].map((url) =>
+            url === video.video_url ? replacement.video_url : url,
+          ),
+        );
         return next;
       });
     },
@@ -121,7 +115,6 @@ export function useFill(videos: Video[] | null) {
     selectedUrls,
     fillMode,
     fillBudget,
-    playlistUrl,
     handleToggleSelect,
     handleDeselect,
     handleFill,
