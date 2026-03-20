@@ -111,9 +111,140 @@
   /* ── selection state ─────────────────────────────────────────────── */
   // We key selections by videoId so they survive DOM re-renders
   var selectedIds = new Set();
+  // CSV comparison state: Set of video IDs from loaded CSV, or null if none loaded
+  var csvVideoIds = null;
+  var csvFilename = "";
   function updateCountLabel() {
     var lbl = document.getElementById("wl-export-count");
     if (lbl) lbl.textContent = selectedIds.size + " selected";
+  }
+  /* ── CSV comparison helpers ──────────────────────────────────────── */
+  function parseCsvToIdSet(text) {
+    // Strip UTF-8 BOM if present
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+    // State machine CSV parser
+    var records = [];
+    var curRecord = [];
+    var curField = "";
+    var state = 0; // 0=FIELD_START, 1=IN_UNQUOTED, 2=IN_QUOTED, 3=AFTER_CLOSE_QUOTE
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+      if (state === 0) {
+        if (ch === '"') { state = 2; }
+        else if (ch === ",") { curRecord.push(curField); curField = ""; state = 0; }
+        else if (ch === "\r" || ch === "\n") {
+          if (ch === "\r" && text[i + 1] === "\n") i++;
+          curRecord.push(curField); curField = "";
+          records.push(curRecord); curRecord = []; state = 0;
+        } else { curField += ch; state = 1; }
+      } else if (state === 1) {
+        if (ch === ",") { curRecord.push(curField); curField = ""; state = 0; }
+        else if (ch === "\r" || ch === "\n") {
+          if (ch === "\r" && text[i + 1] === "\n") i++;
+          curRecord.push(curField); curField = "";
+          records.push(curRecord); curRecord = []; state = 0;
+        } else { curField += ch; }
+      } else if (state === 2) {
+        if (ch === '"') {
+          if (text[i + 1] === '"') { curField += '"'; i++; }
+          else { state = 3; }
+        } else { curField += ch; }
+      } else if (state === 3) {
+        if (ch === ",") { curRecord.push(curField); curField = ""; state = 0; }
+        else if (ch === "\r" || ch === "\n") {
+          if (ch === "\r" && text[i + 1] === "\n") i++;
+          curRecord.push(curField); curField = "";
+          records.push(curRecord); curRecord = []; state = 0;
+        }
+      }
+    }
+    // Flush remaining
+    if (curField || curRecord.length) { curRecord.push(curField); records.push(curRecord); }
+    if (records.length < 1) return new Set();
+    // Find video_url column index
+    var header = records[0];
+    var urlIdx = -1;
+    for (var h = 0; h < header.length; h++) {
+      if (header[h].trim().toLowerCase() === "video_url") { urlIdx = h; break; }
+    }
+    if (urlIdx === -1) return null;
+    // Extract video IDs
+    var ids = new Set();
+    for (var r = 1; r < records.length; r++) {
+      var url = (records[r][urlIdx] || "").trim();
+      if (!url) continue;
+      var id = null;
+      try {
+        var u = new URL(url);
+        if (u.hostname === "youtu.be") id = u.pathname.slice(1);
+        else id = u.searchParams.get("v");
+      } catch (e) {
+        var m = url.match(/[?&]v=([^&]+)/);
+        if (m) id = m[1];
+      }
+      if (id) ids.add(id);
+    }
+    return ids;
+  }
+  function applyHighlights() {
+    if (csvVideoIds === null) return;
+    var items = document.querySelectorAll("ytd-playlist-video-renderer");
+    items.forEach(function (el) {
+      var d = el.data || el.__data;
+      if (!d || !d.videoId) return;
+      var existing = el.querySelector(".wl-csv-highlight");
+      if (!csvVideoIds.has(d.videoId)) {
+        if (!existing) {
+          var ribbon = document.createElement("div");
+          ribbon.className = "wl-csv-highlight";
+          ribbon.style.cssText = [
+            "position:absolute",
+            "top:0",
+            "left:0",
+            "bottom:0",
+            "width:5px",
+            "background:#ff4444",
+            "z-index:10",
+            "pointer-events:none",
+            "border-radius:0 3px 3px 0",
+          ].join(";");
+          el.style.position = "relative";
+          el.appendChild(ribbon);
+        }
+      } else {
+        if (existing) existing.parentNode.removeChild(existing);
+      }
+    });
+  }
+  function clearHighlights() {
+    var existing = document.querySelectorAll(".wl-csv-highlight");
+    existing.forEach(function (el) { el.parentNode.removeChild(el); });
+  }
+  function updateCsvLabel() {
+    var lbl = document.getElementById("wl-csv-count");
+    var clearBtn = document.getElementById("wl-csv-clear-btn");
+    if (!lbl || !clearBtn) return;
+    if (csvVideoIds === null) {
+      lbl.style.display = "none";
+      clearBtn.style.display = "none";
+      return;
+    }
+    var items = document.querySelectorAll("ytd-playlist-video-renderer");
+    var notInCsv = 0;
+    items.forEach(function (el) {
+      var d = el.data || el.__data;
+      if (d && d.videoId && !csvVideoIds.has(d.videoId)) notInCsv++;
+    });
+    lbl.textContent = notInCsv + " not in CSV (visible)";
+    lbl.style.display = "block";
+    clearBtn.style.display = "block";
+  }
+  function runClearCsv() {
+    csvVideoIds = null;
+    csvFilename = "";
+    clearHighlights();
+    updateCsvLabel();
+    console.log("[WL Export] CSV comparison cleared.");
   }
   /* ── checkbox injection ──────────────────────────────────────────── */
   function injectCheckboxes() {
@@ -287,6 +418,56 @@
     panel.appendChild(countLbl);
     panel.appendChild(btnSelected);
     panel.appendChild(btnAll);
+    /* --- CSV comparison section --- */
+    var sep = document.createElement("hr");
+    sep.style.cssText = "border:none;border-top:1px solid #333;margin:4px 0;";
+    /* Hidden file input appended to body (not panel) to avoid fixed-position quirks */
+    var fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = ".csv";
+    fileInput.id = "wl-csv-file-input";
+    fileInput.style.cssText = "display:none;";
+    document.body.appendChild(fileInput);
+    fileInput.addEventListener("change", function () {
+      var file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      csvFilename = file.name;
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        var text = e.target.result;
+        var ids = parseCsvToIdSet(text);
+        if (ids === null) {
+          alert('[WL Export] Could not find a "video_url" column.\nMake sure you are loading a CSV exported by this script or the webapp.');
+          fileInput.value = "";
+          return;
+        }
+        if (ids.size === 0) {
+          alert("[WL Export] The loaded CSV contained no recognizable YouTube video URLs.");
+          fileInput.value = "";
+          return;
+        }
+        csvVideoIds = ids;
+        console.log("[WL Export] CSV loaded: " + ids.size + ' video IDs from "' + csvFilename + '"');
+        clearHighlights();
+        applyHighlights();
+        updateCsvLabel();
+        fileInput.value = "";
+      };
+      reader.readAsText(file);
+    });
+    var btnLoadCsv = makeButton("Load CSV", "#1a6b3a", "#145530", function () {
+      fileInput.click();
+    });
+    var csvCountLbl = document.createElement("span");
+    csvCountLbl.id = "wl-csv-count";
+    csvCountLbl.style.cssText = "color:#ff9999;font-size:12px;text-align:center;display:none;";
+    var btnClearCsv = makeButton("Clear CSV", "#555", "#444", runClearCsv);
+    btnClearCsv.id = "wl-csv-clear-btn";
+    btnClearCsv.style.display = "none";
+    panel.appendChild(sep);
+    panel.appendChild(btnLoadCsv);
+    panel.appendChild(csvCountLbl);
+    panel.appendChild(btnClearCsv);
     document.body.appendChild(panel);
   }
   function makeButton(text, bg, bgHover, handler) {
@@ -313,15 +494,23 @@
     return btn;
   }
   /* ── mutation observer ───────────────────────────────────────────── */
+  var observerTimer = null;
   var observer = new MutationObserver(function () {
-    if (document.querySelector("ytd-playlist-video-renderer")) {
-      injectUI();
-      injectCheckboxes();
-    }
+    if (observerTimer) clearTimeout(observerTimer);
+    observerTimer = setTimeout(function () {
+      if (document.querySelector("ytd-playlist-video-renderer")) {
+        injectUI();
+        injectCheckboxes();
+        applyHighlights();
+        updateCsvLabel();
+      }
+    }, 150);
   });
   observer.observe(document.body, { childList: true, subtree: true });
   if (document.querySelector("ytd-playlist-video-renderer")) {
     injectUI();
     injectCheckboxes();
+    applyHighlights();
+    updateCsvLabel();
   }
 })();
