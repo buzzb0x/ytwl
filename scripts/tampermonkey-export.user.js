@@ -223,10 +223,12 @@
   function updateCsvLabel() {
     var lbl = document.getElementById("wl-csv-count");
     var clearBtn = document.getElementById("wl-csv-clear-btn");
+    var deleteBtn = document.getElementById("wl-auto-delete-btn");
     if (!lbl || !clearBtn) return;
     if (csvVideoIds === null) {
       lbl.style.display = "none";
       clearBtn.style.display = "none";
+      if (deleteBtn) deleteBtn.style.display = "none";
       return;
     }
     var items = document.querySelectorAll("ytd-playlist-video-renderer");
@@ -238,6 +240,7 @@
     lbl.textContent = notInCsv + " not in CSV (visible)";
     lbl.style.display = "block";
     clearBtn.style.display = "block";
+    if (deleteBtn) deleteBtn.style.display = "block";
   }
   function runClearCsv() {
     csvVideoIds = null;
@@ -245,6 +248,67 @@
     clearHighlights();
     updateCsvLabel();
     console.log("[WL Export] CSV comparison cleared.");
+  }
+  /* ── auto-delete helpers ─────────────────────────────────────────── */
+  function delay(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
+  function waitFor(predicate, timeout) {
+    return new Promise(function (resolve) {
+      var start = Date.now();
+      (function check() {
+        if (predicate()) { resolve(true); return; }
+        if (Date.now() - start > timeout) { resolve(false); return; }
+        setTimeout(check, 50);
+      })();
+    });
+  }
+  async function runAutoDelete() {
+    var ribbons = document.querySelectorAll("ytd-playlist-video-renderer .wl-csv-highlight");
+    var items = [];
+    ribbons.forEach(function (r) { items.push(r.parentNode); });
+    if (items.length === 0) {
+      alert("[WL Export] No highlighted videos visible. Scroll through the playlist to load them all, then try again.");
+      return;
+    }
+    var btn = document.getElementById("wl-auto-delete-btn");
+    if (btn) { btn.disabled = true; btn.textContent = "Deleting 0/" + items.length; }
+    var deleted = 0;
+    for (var i = 0; i < items.length; i++) {
+      var el = items[i];
+      if (btn) btn.textContent = "Deleting " + (i + 1) + "/" + items.length;
+      var actionBtn = el.querySelector("ytd-menu-renderer #button");
+      if (!actionBtn) continue;
+      actionBtn.click();
+      var appeared = await waitFor(function () {
+        return !!document.querySelector("ytd-menu-popup-renderer ytd-menu-service-item-renderer");
+      }, 2000);
+      if (!appeared) {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", keyCode: 27, bubbles: true }));
+        await delay(200);
+        continue;
+      }
+      var menuItems = document.querySelectorAll("ytd-menu-popup-renderer ytd-menu-service-item-renderer");
+      var removeItem = null;
+      menuItems.forEach(function (item) {
+        if ((item.textContent || "").toLowerCase().indexOf("remove from watch") !== -1) removeItem = item;
+      });
+      if (removeItem) {
+        removeItem.click();
+        deleted++;
+        await delay(600);
+      } else {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", keyCode: 27, bubbles: true }));
+        await delay(200);
+      }
+    }
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Delete Highlighted";
+      btn.style.background = "#c05000";
+    }
+    updateCsvLabel();
+    console.log("[WL Export] Auto-delete done: " + deleted + "/" + items.length + " removed.");
   }
   /* ── checkbox injection ──────────────────────────────────────────── */
   function injectCheckboxes() {
@@ -464,9 +528,13 @@
     var btnClearCsv = makeButton("Clear CSV", "#555", "#444", runClearCsv);
     btnClearCsv.id = "wl-csv-clear-btn";
     btnClearCsv.style.display = "none";
+    var btnAutoDelete = makeButton("Delete Highlighted", "#c05000", "#a04000", runAutoDelete);
+    btnAutoDelete.id = "wl-auto-delete-btn";
+    btnAutoDelete.style.display = "none";
     panel.appendChild(sep);
     panel.appendChild(btnLoadCsv);
     panel.appendChild(csvCountLbl);
+    panel.appendChild(btnAutoDelete);
     panel.appendChild(btnClearCsv);
     document.body.appendChild(panel);
   }
