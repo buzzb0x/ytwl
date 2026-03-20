@@ -8,6 +8,7 @@
   --color-dimmed: #555;
   --font-syne: "Syne", sans-serif;
   --font-mono: "DM Mono", monospace;
+  --breakpoint-xs: 480px;
 }
 
 *,

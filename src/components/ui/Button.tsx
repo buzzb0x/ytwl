@@ -2,7 +2,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "font-mono text-[11px] px-[11px] py-[7px] rounded-md cursor-pointer shrink-0 transition-colors",
+  "font-mono text-[11px] px-[11px] py-[7px] rounded-md cursor-pointer transition-colors",
   {
     variants: {
       variant: {
