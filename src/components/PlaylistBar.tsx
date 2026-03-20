@@ -49,6 +49,7 @@ export function PlaylistBar({
           {fillMode && onReroll && (
             <button
               onClick={onReroll}
+              title="Reroll all videos"
               className="flex-1 xs:flex-none
                 bg-transparent border border-white/15 rounded-md px-[10px] py-1.5
                 text-[12px] text-[#aaa] cursor-pointer
