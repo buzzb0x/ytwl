@@ -214,7 +214,7 @@
         var u = new URL(url);
         if (u.hostname === "youtu.be") id = u.pathname.slice(1);
         else id = u.searchParams.get("v");
-      } catch (e) {
+      } catch {
         var m = url.match(/[?&]v=([^&]+)/);
         if (m) id = m[1];
       }

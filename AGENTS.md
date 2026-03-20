@@ -164,7 +164,7 @@ interface Video {
 
 ## Contribution Notes
 
-- Run `npm run test:run` and `npm run build` to verify nothing is broken after changes
+- Before finishing any change, run `npm run lint`, `npx prettier --check .`, and `npm run test:run` to verify nothing is broken. Fix any issues before considering the task done.
 - All new components should use Tailwind classes (no inline styles)
 - Use `cn()` for conditional class composition; use `cva()` for discrete variants
 - Keep `App.tsx` thin — business logic belongs in hooks, layout in components
