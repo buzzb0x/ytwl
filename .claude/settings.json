@@ -5,7 +5,9 @@
       "Bash(npm run:*)",
       "Bash(npx vitest:*)",
       "Bash(npx prettier:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "WebSearch",
+      "Bash(npm info:*)"
     ]
   }
 }
