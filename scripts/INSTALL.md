@@ -26,7 +26,7 @@ Chrome may show a warning that the extension needs permission to run on websites
 4. Under **Site access**, choose **On all sites** (or at minimum allow `youtube.com`)
 5. Make sure the toggle at the top of the extension page is **on** (blue)
 
-> On newer Chrome versions you may also need to enable **Developer mode** in `chrome://extensions/` before Tampermonkey can install scripts from file.
+> On newer Chrome versions you need to explicitly allow Tampermonkey to run userscripts. Go to `chrome://extensions`, find Tampermonkey, click **Details**, and turn on **Allow access to file URLs** — or look for the **"Allow user scripts"** toggle that appears in some Chrome builds.
 
 ---
 
@@ -55,6 +55,21 @@ Chrome may show a warning that the extension needs permission to run on websites
 2. Scroll down to load videos — YouTube loads them lazily, so scroll until you've loaded all the ones you want to export
 3. Click **Export All** or select individual videos and click **Export Selected**
 4. A CSV file will download automatically
+
+---
+
+## Bonus: compare exports & auto-delete
+
+The script has a **Load CSV** button that lets you import a previously-exported CSV back into the page. Once loaded:
+
+- Any video that was in your old CSV but is **no longer in your YouTube Watch Later** is highlighted with a red ribbon — these are videos you've deleted from the YTWL app since your last export.
+- **Auto-delete mode** will automatically remove all highlighted videos from your YouTube Watch Later playlist in one pass, keeping YouTube in sync with your app.
+
+**Typical workflow:**
+1. Open your Watch Later playlist and scroll to load everything
+2. Click **Load CSV** and pick your most recent export
+3. The script highlights videos you've culled in the app
+4. Click **Auto-delete** to remove them from YouTube too
 
 ---
 

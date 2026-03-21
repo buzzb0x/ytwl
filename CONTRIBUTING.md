@@ -16,10 +16,11 @@ npm run dev
 ```bash
 npm test          # run the test suite
 npm run lint      # check for lint errors
+npm run types     # TypeScript type-check
 npm run format    # auto-format with Prettier
 ```
 
-All three should pass cleanly. The pre-commit hook (`husky`) will run lint and tests automatically.
+All four should pass cleanly. The pre-commit hook (`husky`) will run lint and tests automatically.
 
 ## Reporting bugs
 

@@ -34,7 +34,7 @@ assignees: ''
 ## CSV / data details (if relevant)
 
 <!-- Approximate playlist size, any unusual video types (Shorts, live streams, private), etc. -->
-<!-- Do NOT share your actual CSV file — strip any personal data first. -->
+<!-- Feel free to attach your CSV file if it helps reproduce the issue. -->
 
 ## Additional context
 

@@ -21,7 +21,7 @@ Your data lives entirely in `localStorage` — nothing is sent anywhere.
 ### Import & sync
 - Drag-and-drop or click-to-browse CSV upload
 - Merge imports — re-import an updated CSV and only new videos are added (duplicates skipped)
-- Compare mode in the userscript highlights new videos since your last export
+- Compare mode in the userscript: load a previously-exported CSV and it highlights videos you've since deleted from the app; auto-delete mode removes them from YouTube's Watch Later in one go
 
 ### Search
 - **Text search** — filters by title and channel name as you type
@@ -75,7 +75,7 @@ See [scripts/INSTALL.md](scripts/INSTALL.md) for step-by-step instructions on in
 | Build | Vite 8 |
 | Styling | Tailwind CSS v4 |
 | CSV parsing | papaparse |
-| Semantic search | @huggingface/transformers (on-device) |
+| Semantic search | @huggingface/transformers — [`Xenova/all-MiniLM-L6-v2`](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) (on-device) |
 | PWA | vite-plugin-pwa |
 | Testing | Vitest + React Testing Library |
 
