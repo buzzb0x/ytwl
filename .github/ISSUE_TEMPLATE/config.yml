@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Installation help
+    url: https://github.com/buzzb0x/ytwl/blob/main/scripts/INSTALL.md
+    about: Having trouble installing the Tampermonkey script? Check the install guide first.
