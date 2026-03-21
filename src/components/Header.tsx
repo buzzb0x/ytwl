@@ -6,6 +6,8 @@ import {
   Upload,
   Download,
   Trash2,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/Button";
@@ -29,6 +31,11 @@ interface HeaderProps {
   filteredCount: number;
   totalH: number;
   totalM: number;
+  isSemanticSearchEnabled: boolean;
+  onSemanticToggle: () => void;
+  isSemanticSearchLoading: boolean;
+  semanticThreshold: number;
+  onThresholdChange: (v: number) => void;
 }
 
 export function Header({
@@ -47,6 +54,11 @@ export function Header({
   filteredCount,
   totalH,
   totalM,
+  isSemanticSearchEnabled,
+  onSemanticToggle,
+  isSemanticSearchLoading,
+  semanticThreshold,
+  onThresholdChange,
 }: HeaderProps) {
   const importRef = useRef<HTMLInputElement>(null);
 
@@ -59,17 +71,51 @@ export function Header({
             Watch<span className="text-accent">Later</span>
           </div>
 
-          <div className="flex-[3_1_200px] relative">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-dimmed pointer-events-none"
-            />
-            <Input
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search videos or channels..."
-              className="w-full pl-8"
-            />
+          <div className="flex-[3_1_200px] flex items-center gap-1.5">
+            <div className="relative flex-1">
+              <Search
+                size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-dimmed pointer-events-none"
+              />
+              <Input
+                value={search}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="Search videos or channels..."
+                className="w-full pl-8"
+              />
+            </div>
+            <button
+              onClick={onSemanticToggle}
+              title={
+                isSemanticSearchEnabled
+                  ? "Disable semantic search"
+                  : "Enable semantic search (AI-powered)"
+              }
+              className={cn(
+                "shrink-0 p-[7px] rounded-md border transition-colors cursor-pointer",
+                isSemanticSearchEnabled
+                  ? "border-accent/50 bg-accent/10 text-accent hover:bg-accent/20"
+                  : "border-white/10 bg-transparent text-[#666] hover:text-[#aaa] hover:border-white/20",
+              )}
+            >
+              {isSemanticSearchLoading ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Sparkles size={14} />
+              )}
+            </button>
+            {isSemanticSearchEnabled && (
+              <input
+                type="number"
+                min={0.05}
+                max={0.95}
+                step={0.05}
+                value={semanticThreshold}
+                onChange={(e) => onThresholdChange(Number(e.target.value))}
+                title="Similarity threshold (0.05–0.95)"
+                className="w-14 shrink-0 rounded-md border border-white/10 bg-transparent px-2 py-[6px] text-[12px] font-mono text-dimmed focus:outline-none focus:border-accent/50"
+              />
+            )}
           </div>
 
           <Select

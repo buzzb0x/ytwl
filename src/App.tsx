@@ -1,7 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useVideos } from "@/hooks/useVideos";
 import { useFill } from "@/hooks/useFill";
+import { useSemanticSearch } from "@/hooks/useSemanticSearch";
 import { parseDuration } from "@/lib/duration";
 import { getVideoId } from "@/lib/youtube";
 import type { Video } from "@/types";
@@ -30,6 +31,20 @@ export default function App() {
 
   const { handleUpload, handleMerge, handleRemove, exportCSV, clearVideos } =
     useVideos(videos, setVideos);
+
+  const {
+    isEnabled: isSemanticSearchEnabled,
+    setIsEnabled: setIsSemanticSearchEnabled,
+    isLoading: isSemanticSearchLoading,
+    threshold: semanticThreshold,
+    setThreshold: setSemanticThreshold,
+    syncCache,
+    semanticFilter,
+  } = useSemanticSearch(search);
+
+  useEffect(() => {
+    syncCache(videos ?? []);
+  }, [videos, syncCache]);
 
   const [prevSortBy, setPrevSortBy] = useState<SortBy | null>(null);
 
@@ -81,12 +96,15 @@ export default function App() {
     );
   }
 
-  const filtered = videos.filter(
-    (v) =>
-      !search ||
-      v.title?.toLowerCase().includes(search.toLowerCase()) ||
-      v.channel_name?.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filtered =
+    isSemanticSearchEnabled && search
+      ? semanticFilter(videos)
+      : videos.filter(
+          (v) =>
+            !search ||
+            v.title?.toLowerCase().includes(search.toLowerCase()) ||
+            v.channel_name?.toLowerCase().includes(search.toLowerCase()),
+        );
 
   const selectionOrder =
     sortBy === "selection"
@@ -167,6 +185,13 @@ export default function App() {
         filteredCount={filtered.length}
         totalH={totalH}
         totalM={totalM}
+        isSemanticSearchEnabled={isSemanticSearchEnabled}
+        onSemanticToggle={() =>
+          setIsSemanticSearchEnabled(!isSemanticSearchEnabled)
+        }
+        isSemanticSearchLoading={isSemanticSearchLoading}
+        semanticThreshold={semanticThreshold}
+        onThresholdChange={setSemanticThreshold}
       />
 
       <main className="max-w-[1200px] mx-auto px-5 pt-5 pb-16">

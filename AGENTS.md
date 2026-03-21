@@ -14,7 +14,8 @@
 - **class-variance-authority (cva)** for component variant logic
 - **Lucide React** for icons
 - **papaparse** for CSV parsing/serialization
-- **LocalStorage** for persistence (`ytwl_videos`, `ytwl_sortBy`, etc.)
+- **LocalStorage** for persistence (`ytwl_videos`, `ytwl_sortBy`, `ytwl_isSemanticSearchEnabled`, `ytwl_semanticThreshold`, `ytwl_embeddings`, etc.)
+- **@huggingface/transformers** (`Xenova/all-MiniLM-L6-v2`) for optional semantic search
 
 ## Project Structure
 
@@ -34,6 +35,9 @@ src/
     useLocalStorage.ts    # Generic localStorage-backed state
     useVideos.ts          # Video list CRUD and CSV export
     useFill.ts            # Fill/swap/select logic and playlist URL
+    useSemanticSearch.ts  # Semantic search toggle, embeddings cache, filter
+  lib/
+    semanticSearch.ts     # cosineSimilarity, computeEmbedding (lazy pipeline singleton)
   components/
     ui/
       Button.tsx          # Ghost / danger / accent variants (cva)
@@ -46,10 +50,12 @@ src/
     PlaylistBar.tsx       # Fixed bottom bar for playlist selection
     VideoGrid.tsx         # Grouped/ungrouped video list
   test/
-    setup.ts              # Vitest setup (jest-dom matchers)
-    utils.test.ts         # Unit tests for lib utilities
-    VideoCard.test.tsx    # Component tests for VideoCard hover/interaction
-    App.test.tsx          # Integration tests: search, sort, fill, select, group, swap
+    setup.ts                    # Vitest setup (jest-dom matchers)
+    utils.test.ts               # Unit tests for lib utilities
+    VideoCard.test.tsx          # Component tests for VideoCard hover/interaction
+    App.test.tsx                # Integration tests: search, sort, fill, select, group, swap
+    semanticSearch.test.ts      # Unit tests: cosineSimilarity, mocked embeddings, cache logic, filter
+    semanticSearchCorpus.test.ts  # Real-model threshold calibration (Node env, run manually)
 scripts/
   tampermonkey-export.user.js  # Browser userscript for exporting from YouTube
 index.html
@@ -80,6 +86,8 @@ npm run test:ui   # Open Vitest browser UI
 - `utils.test.ts` — unit tests for `getVideoId`, `parseDuration`, `formatDuration`, `parseCSV`, `serializeCSV`
 - `VideoCard.test.tsx` — hover shows/hides remove and swap buttons; checkbox behavior; callback invocation
 - `App.test.tsx` — integration tests: search/filter, sort, fill algorithm, select/unselect, group by channel (collapse/expand), fill swap
+- `semanticSearch.test.ts` — unit tests for `cosineSimilarity`, mocked `computeEmbedding`, cache sync logic, threshold filter; mocks `@huggingface/transformers` via `_setPipelineForTesting`
+- `semanticSearchCorpus.test.ts` — real-model threshold calibration against the public CSV corpus; uses `// @vitest-environment node` (required — jsdom breaks ONNX Runtime's `Float32Array` check); run manually with `npm run test:run -- src/test/semanticSearchCorpus.test.ts`
 
 **Notes:**
 
@@ -88,6 +96,7 @@ npm run test:ui   # Open Vitest browser UI
 - App tests seed `localStorage` with a fixed 5-video dataset before each test
 - Fill and swap tests account for randomness by asserting constraints (total ≤ budget) rather than exact values
 - Vitest globals (`describe`, `it`, `expect`, `vi`) are available without imports via `"types": ["vitest/globals"]` in `tsconfig.json`
+- `skipLibCheck: true` is set in `tsconfig.json` to suppress a type bug in `@huggingface/transformers` (`MgpstrProcessor.batch_decode` incompatible with its base class — tracked upstream in huggingface/transformers.js#1093)
 
 ## Architecture & Conventions
 
@@ -145,7 +154,8 @@ interface Video {
 ### Key Features
 
 - **Import/Export** — CSV-based; import merges with existing data (deduplicates by `video_url`)
-- **Search** — real-time, title + channel
+- **Search** — real-time substring (title + channel) or optional semantic search (title only, AI-powered)
+- **Semantic search** — opt-in via `Sparkles` toggle in header; lazy-loads `Xenova/all-MiniLM-L6-v2`; embeddings cached in `localStorage` (`ytwl_embeddings`) and kept in sync with all video mutations; configurable similarity threshold (`ytwl_semanticThreshold`, default 0.25)
 - **Sort** — date (newest/oldest), duration (longest/shortest), alphabetical
 - **Group** — by channel or month (collapsible sections)
 - **View** — grid or list
