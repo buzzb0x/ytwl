@@ -1,10 +1,10 @@
 // ==UserScript==
-// @name         YouTube Watch Later - Export to CSV
+// @name         YouTube Playlist - Export to CSV
 // @namespace    http://tampermonkey.net/
-// @version      2.0
-// @description  Exports your YouTube Watch Later playlist to a CSV file, with optional per-video selection
+// @version      2.1
+// @description  Exports any YouTube playlist to a CSV file, with optional per-video selection
 // @author       You
-// @match        https://www.youtube.com/playlist?list=WL*
+// @match        https://www.youtube.com/playlist?list=*
 // @grant        none
 // ==/UserScript==
 (function () {
@@ -106,7 +106,8 @@
       pad(now.getMinutes()) +
       "-" +
       pad(now.getSeconds());
-    return "youtube-watch-later_" + datePart + "_" + timePart + ".csv";
+    var listId = new URLSearchParams(location.search).get("list") || "playlist";
+    return "youtube-" + listId + "_" + datePart + "_" + timePart + ".csv";
   }
   /* ── selection state ─────────────────────────────────────────────── */
   // We key selections by videoId so they survive DOM re-renders
@@ -285,7 +286,7 @@
     csvFilename = "";
     clearHighlights();
     updateCsvLabel();
-    console.log("[WL Export] CSV comparison cleared.");
+    console.log("[YT Export] CSV comparison cleared.");
   }
   /* ── auto-delete helpers ─────────────────────────────────────────── */
   function delay(ms) {
@@ -319,7 +320,7 @@
     });
     if (items.length === 0) {
       alert(
-        "[WL Export] No highlighted videos visible. Scroll through the playlist to load them all, then try again.",
+        "[YT Export] No highlighted videos visible. Scroll through the playlist to load them all, then try again.",
       );
       return;
     }
@@ -356,10 +357,10 @@
       );
       var removeItem = null;
       menuItems.forEach(function (item) {
+        var itemText = (item.textContent || "").toLowerCase();
         if (
-          (item.textContent || "")
-            .toLowerCase()
-            .indexOf("remove from watch") !== -1
+          itemText.indexOf("remove from watch") !== -1 ||
+          itemText.indexOf("remove from playlist") !== -1
         )
           removeItem = item;
       });
@@ -385,7 +386,7 @@
     }
     updateCsvLabel();
     console.log(
-      "[WL Export] Auto-delete done: " +
+      "[YT Export] Auto-delete done: " +
         deleted +
         "/" +
         items.length +
@@ -468,7 +469,7 @@
     var items = document.querySelectorAll("ytd-playlist-video-renderer");
     if (items.length === 0) {
       alert(
-        "No Watch Later items found. Make sure the playlist has fully loaded.",
+        "No playlist items found. Make sure the playlist has fully loaded.",
       );
       return;
     }
@@ -478,7 +479,7 @@
       if (row) rows.push(row);
     });
     downloadCSV([HEADER].concat(rows).join(CRLF), getFilename());
-    console.log("[WL Export] All done - " + rows.length + " videos exported.");
+    console.log("[YT Export] All done - " + rows.length + " videos exported.");
   }
   function runExportSelected() {
     if (selectedIds.size === 0) {
@@ -504,7 +505,7 @@
     }
     downloadCSV([HEADER].concat(rows).join(CRLF), getFilename());
     console.log(
-      "[WL Export] Selected done - " + rows.length + " videos exported.",
+      "[YT Export] Selected done - " + rows.length + " videos exported.",
     );
   }
   /* ── UI panel ────────────────────────────────────────────────────── */
@@ -590,21 +591,21 @@
         var ids = parseCsvToIdSet(text);
         if (ids === null) {
           alert(
-            '[WL Export] Could not find a "video_url" column.\nMake sure you are loading a CSV exported by this script or the webapp.',
+            '[YT Export] Could not find a "video_url" column.\nMake sure you are loading a CSV exported by this script or the webapp.',
           );
           fileInput.value = "";
           return;
         }
         if (ids.size === 0) {
           alert(
-            "[WL Export] The loaded CSV contained no recognizable YouTube video URLs.",
+            "[YT Export] The loaded CSV contained no recognizable YouTube video URLs.",
           );
           fileInput.value = "";
           return;
         }
         csvVideoIds = ids;
         console.log(
-          "[WL Export] CSV loaded: " +
+          "[YT Export] CSV loaded: " +
             ids.size +
             ' video IDs from "' +
             csvFilename +
