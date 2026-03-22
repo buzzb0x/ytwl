@@ -40,6 +40,7 @@ Use the [feature request template](.github/ISSUE_TEMPLATE/feature_request.md). E
 ## Userscript changes
 
 The script at `scripts/tampermonkey-export.user.js` runs inside YouTube's page, so:
+
 - Avoid modern syntax that old browsers don't support (it's not transpiled)
 - Test against a real Watch Later playlist with a variety of video types (Shorts, live streams, long videos)
 - Bump `@version` in the script header

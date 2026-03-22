@@ -66,6 +66,7 @@ The script has a **Load CSV** button that lets you import a previously-exported 
 - **Auto-delete mode** will automatically remove all highlighted videos from your YouTube Watch Later playlist in one pass, keeping YouTube in sync with your app.
 
 **Typical workflow:**
+
 1. Open your Watch Later playlist and scroll to load everything
 2. Click **Load CSV** and pick your most recent export
 3. The script highlights videos you've culled in the app
@@ -75,9 +76,9 @@ The script has a **Load CSV** button that lets you import a previously-exported 
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---|---|
-| No Export button appears | Make sure the script is enabled in Tampermonkey and you're on the Watch Later URL (`?list=WL`) |
-| Some videos are missing | Scroll further down the playlist before exporting — YouTube loads videos lazily |
-| "Developer mode" warning in Chrome | Go to `chrome://extensions`, enable **Developer mode**, then re-install the script |
-| CSV file is empty | Your playlist may not have loaded yet — wait a moment and try again |
+| Problem                            | Fix                                                                                            |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------- |
+| No Export button appears           | Make sure the script is enabled in Tampermonkey and you're on the Watch Later URL (`?list=WL`) |
+| Some videos are missing            | Scroll further down the playlist before exporting — YouTube loads videos lazily                |
+| "Developer mode" warning in Chrome | Go to `chrome://extensions`, enable **Developer mode**, then re-install the script             |
+| CSV file is empty                  | Your playlist may not have loaded yet — wait a moment and try again                            |
