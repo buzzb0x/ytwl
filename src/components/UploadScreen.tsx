@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Upload, Github, BookOpen } from "lucide-react";
+import { Upload, Github, BookOpen, FlaskConical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { parseCSV } from "@/lib/csv";
 import type { Video } from "@/types";
@@ -11,6 +11,20 @@ interface UploadScreenProps {
 export function UploadScreen({ onUpload }: UploadScreenProps) {
   const ref = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  const [loadingDemo, setLoadingDemo] = useState(false);
+
+  const handleDemo = useCallback(async () => {
+    setLoadingDemo(true);
+    try {
+      const res = await fetch("/sample.csv");
+      const text = await res.text();
+      onUpload(parseCSV(text));
+    } catch {
+      alert("Failed to load demo data.");
+    } finally {
+      setLoadingDemo(false);
+    }
+  }, [onUpload]);
 
   const handle = useCallback(
     (file: File | null | undefined) => {
@@ -75,7 +89,16 @@ export function UploadScreen({ onUpload }: UploadScreenProps) {
         onChange={(e) => handle(e.target.files?.[0])}
       />
 
-      <div className="flex items-center gap-6 mt-10">
+      <button
+        onClick={handleDemo}
+        disabled={loadingDemo}
+        className="mt-6 flex items-center gap-2 font-mono text-[12px] text-dimmed hover:text-white transition-colors disabled:opacity-50"
+      >
+        <FlaskConical size={14} />
+        {loadingDemo ? "loading…" : "try demo"}
+      </button>
+
+      <div className="flex items-center gap-6 mt-6">
         <a
           href="https://github.com/buzzb0x/ytwl"
           target="_blank"
