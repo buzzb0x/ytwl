@@ -396,11 +396,17 @@
   function injectCheckboxes() {
     var items = document.querySelectorAll("ytd-playlist-video-renderer");
     items.forEach(function (el) {
-      // Avoid duplicating
-      if (el.querySelector(".wl-checkbox")) return;
       var d = el.data || el.__data;
       if (!d || !d.videoId) return;
       var videoId = d.videoId;
+      // If a checkbox already exists, keep it only if it belongs to the same video.
+      // YouTube recycles DOM elements while scrolling, swapping data underneath —
+      // without this check the old closure still references the previous videoId.
+      var existingCb = el.querySelector(".wl-checkbox");
+      if (existingCb) {
+        if (existingCb.dataset.videoId === videoId) return; // still valid
+        existingCb.parentNode.remove(); // stale wrapper — remove so we re-inject below
+      }
       var wrapper = document.createElement("label");
       wrapper.style.cssText = [
         "position:absolute",
