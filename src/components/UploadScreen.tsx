@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Upload } from "lucide-react";
+import { Upload, Github, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { parseCSV } from "@/lib/csv";
 import type { Video } from "@/types";
@@ -74,6 +74,28 @@ export function UploadScreen({ onUpload }: UploadScreenProps) {
         className="hidden"
         onChange={(e) => handle(e.target.files?.[0])}
       />
+
+      <div className="flex items-center gap-6 mt-10">
+        <a
+          href="https://github.com/buzzb0x/ytwl"
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-2 font-mono text-[12px] text-dimmed hover:text-white transition-colors"
+        >
+          <Github size={14} />
+          buzzb0x/ytwl
+        </a>
+        <span className="text-white/15">·</span>
+        <a
+          href="https://github.com/buzzb0x/ytwl/blob/main/scripts/INSTALL.md"
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-2 font-mono text-[12px] text-dimmed hover:text-white transition-colors"
+        >
+          <BookOpen size={14} />
+          how to install the script
+        </a>
+      </div>
     </div>
   );
 }
