@@ -61,6 +61,22 @@ export function Header({
   onThresholdChange,
 }: HeaderProps) {
   const importRef = useRef<HTMLInputElement>(null);
+  const handleFillChange = (value: string) => {
+    if (!value) return;
+
+    if (value === "other") {
+      const input = window.prompt("Fill how many minutes?", "30");
+      if (input === null) return;
+
+      const minutes = Number(input);
+      if (!Number.isFinite(minutes) || minutes <= 0) return;
+
+      onFill(minutes);
+      return;
+    }
+
+    onFill(Number(value));
+  };
 
   return (
     <div className="sticky top-0 z-10 bg-[rgba(10,10,10,0.95)] backdrop-blur-[12px] border-b border-white/7 px-4 sm:px-5 py-3">
@@ -187,7 +203,7 @@ export function Header({
           <Select
             value=""
             onChange={(e) => {
-              if (e.target.value) onFill(Number(e.target.value));
+              handleFillChange(e.target.value);
               e.target.value = "";
             }}
             className="flex-[1_1_70px]"
@@ -200,6 +216,9 @@ export function Header({
                 {m} min
               </option>
             ))}
+            <option value="other" style={{ background: "#1a1a1a" }}>
+              Other…
+            </option>
           </Select>
         </div>
 

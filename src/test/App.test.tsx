@@ -144,6 +144,30 @@ describe("Fill", () => {
     await userEvent.selectOptions(screen.getByDisplayValue("⏱ Fill..."), "30");
     expect(screen.getByText(/\d+ videos? · \d+m \d+s/)).toBeInTheDocument();
   });
+
+  it("supports a custom fill budget from the native prompt", async () => {
+    const promptSpy = vi.spyOn(window, "prompt").mockReturnValue("12");
+
+    render(<App />);
+    await userEvent.selectOptions(
+      screen.getByDisplayValue("⏱ Fill..."),
+      "other",
+    );
+
+    expect(promptSpy).toHaveBeenCalledWith("Fill how many minutes?", "30");
+
+    const visibleTitles = VIDEOS.filter((v) => screen.queryByText(v.title)).map(
+      (v) => v.title,
+    );
+    const totalSecs = visibleTitles.reduce((sum, t) => {
+      const v = VIDEOS.find((x) => x.title === t);
+      return sum + parseDuration(v?.duration || "");
+    }, 0);
+
+    expect(totalSecs).toBeLessThanOrEqual(12 * 60);
+
+    promptSpy.mockRestore();
+  });
 });
 
 describe("Select / Unselect", () => {
