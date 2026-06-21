@@ -58,6 +58,21 @@ describe("VideoCard — hover actions", () => {
   });
 });
 
+describe("VideoCard — thumbnail", () => {
+  it("loads thumbnails lazily and decodes them asynchronously", () => {
+    const { container } = renderCard({
+      video: {
+        ...video,
+        thumbnail_url: "https://i.ytimg.com/vi/abc123/hqdefault.jpg",
+      },
+    });
+
+    const thumbnail = container.querySelector("img");
+    expect(thumbnail).toHaveAttribute("loading", "lazy");
+    expect(thumbnail).toHaveAttribute("decoding", "async");
+  });
+});
+
 describe("VideoCard — checkbox", () => {
   it("does NOT show checkbox before hover when anySelected is false", () => {
     renderCard({ anySelected: false });

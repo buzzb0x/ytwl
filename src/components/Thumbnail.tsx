@@ -23,6 +23,8 @@ export function Thumbnail({ video, compact }: ThumbnailProps) {
         <img
           src={video.thumbnail_url}
           alt=""
+          loading="lazy"
+          decoding="async"
           onError={() => setImgErr(true)}
           className="w-full h-full object-cover block"
         />

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Playlist - Export to CSV
 // @namespace    http://tampermonkey.net/
-// @version      2.1
+// @version      2.2
 // @description  Exports any YouTube playlist to a CSV file, with optional per-video selection
 // @author       You
 // @match        https://www.youtube.com/playlist?list=*
@@ -13,21 +13,45 @@
   var BOM = String.fromCharCode(0xfeff);
   /* ── helpers ─────────────────────────────────────────────────────── */
   function estimateAbsoluteDate(relative) {
+    if (!relative) return "";
     var now = new Date();
-    var re = /([0-9]+)[ ]+(second|minute|hour|day|week|month|year)s?[ ]+ago/i;
+    // Handles both the full ("3 days ago") and compact ("3d ago") formats
+    // YouTube uses depending on locale/layout.
+    var re =
+      /([0-9]+)\s*(seconds?|s|minutes?|min|m|hours?|h|days?|d|weeks?|w|months?|mo|years?|y)\b\s*ago/i;
     var match = relative.match(re);
     if (!match) return "";
     var num = parseInt(match[1], 10);
-    var unit = match[2].toLowerCase();
+    var token = match[2].toLowerCase();
     var result = new Date(now);
-    if (unit === "second") result.setSeconds(result.getSeconds() - num);
-    else if (unit === "minute") result.setMinutes(result.getMinutes() - num);
-    else if (unit === "hour") result.setHours(result.getHours() - num);
-    else if (unit === "day") result.setDate(result.getDate() - num);
-    else if (unit === "week") result.setDate(result.getDate() - num * 7);
-    else if (unit === "month") result.setMonth(result.getMonth() - num);
-    else if (unit === "year") result.setFullYear(result.getFullYear() - num);
+    if (token === "s" || token.indexOf("second") === 0)
+      result.setSeconds(result.getSeconds() - num);
+    else if (token === "min" || token === "m" || token.indexOf("minute") === 0)
+      result.setMinutes(result.getMinutes() - num);
+    else if (token === "h" || token.indexOf("hour") === 0)
+      result.setHours(result.getHours() - num);
+    else if (token === "d" || token.indexOf("day") === 0)
+      result.setDate(result.getDate() - num);
+    else if (token === "w" || token.indexOf("week") === 0)
+      result.setDate(result.getDate() - num * 7);
+    else if (token === "mo" || token.indexOf("month") === 0)
+      result.setMonth(result.getMonth() - num);
+    else if (token === "y" || token.indexOf("year") === 0)
+      result.setFullYear(result.getFullYear() - num);
     return result.toISOString().split("T")[0];
+  }
+  function cleanThumbnailUrl(url, videoId) {
+    var base = (url || "").split("?")[0];
+    // Custom A/B-test thumbnails (…/hqdefault_custom_N.jpg) only load with a
+    // signed sqp/rs query string, which we strip and which expires anyway.
+    // Fall back to the canonical thumbnail derived from the videoId — it's
+    // always available unsigned.
+    if (!base || /_custom/.test(base)) {
+      return videoId
+        ? "https://i.ytimg.com/vi/" + videoId + "/hqdefault.jpg"
+        : "";
+    }
+    return base;
   }
   function csvEscape(value) {
     var str = (value == null ? "" : String(value)).replace(/"/g, '""');
@@ -44,9 +68,10 @@
       "";
     var duration = (d.lengthText && d.lengthText.simpleText) || "";
     var thumbs = (d.thumbnail && d.thumbnail.thumbnails) || [];
-    var thumbnailUrl = thumbs.length
-      ? (thumbs[thumbs.length - 1].url || "").split("?")[0]
-      : "";
+    var thumbnailUrl = cleanThumbnailUrl(
+      thumbs.length ? thumbs[thumbs.length - 1].url : "",
+      videoId,
+    );
     var channelRun =
       d.shortBylineText && d.shortBylineText.runs && d.shortBylineText.runs[0];
     var channelName = channelRun ? channelRun.text : "";
